@@ -52,8 +52,8 @@ set(CMAKE_HOST_SYSTEM_PROCESSOR X86_64)
 
 # `CMAKE_C_COMPILER` and `CMAKE_CXX_COMPILER`: The full path to the compiler for `LANG`.
 #
-set(CMAKE_C_COMPILER /usr/bin/clang)
-set(CMAKE_CXX_COMPILER /usr/bin/clang++ -std=c++17 -stdlib=libc++)
+set(CMAKE_C_COMPILER clang)
+set(CMAKE_CXX_COMPILER clang++ -std=c++17 -stdlib=libc++)
 
 
 # If you want to do a cross-complication, then set to the target OS C/C++ compiler:
