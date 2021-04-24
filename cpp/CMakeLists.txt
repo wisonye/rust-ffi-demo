@@ -53,8 +53,11 @@ set(CMAKE_HOST_SYSTEM_PROCESSOR X86_64)
 # `CMAKE_C_COMPILER` and `CMAKE_CXX_COMPILER`: The full path to the compiler for `LANG`.
 #
 set(CMAKE_C_COMPILER clang)
-set(CMAKE_CXX_COMPILER clang++ -std=c++17 -stdlib=libc++)
+set(CMAKE_CXX_COMPILER clang++  -stdlib=libc++)
 
+# Same with adding the compile flag `-std=c++17`
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED on)
 
 # If you want to do a cross-complication, then set to the target OS C/C++ compiler:
 #
@@ -69,6 +72,9 @@ set(CMAKE_CXX_COMPILER clang++ -std=c++17 -stdlib=libc++)
 
 
 
+# Build type
+set(CMAKE_BUILD_TYPE Release)
+
 
 #-------------------------------------------------------------------------------------
 # Project settings
@@ -76,7 +82,7 @@ set(CMAKE_CXX_COMPILER clang++ -std=c++17 -stdlib=libc++)
 
 # Define project name. After this, we can use "${PROJECT_NAME}" var to 
 # dereference/re-use the project name as a String value.
-project("ffi-demo-cpp-lib")
+project("ffi-demo-cpp")
 
 
 # Compile the particular source code as a static library which named as
