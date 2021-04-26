@@ -1,5 +1,6 @@
 #include "lib.h"
 #include <cstddef>
+#include <cstring>
 #include <string>
 #include <iostream>
 #include <sstream>
@@ -32,8 +33,10 @@ std::ostream& operator<<(ostream& stream_out, const Person& p) {
 // Create new person instance and return it
 //
 Person create_new_person(
-        string first_name, 
-        string last_name, 
+        // string first_name, 
+        // string last_name, 
+        const char* first_name, 
+        const char* last_name, 
         Sex sex,
         uint8_t age,
         Location location) {
@@ -44,8 +47,10 @@ Person create_new_person(
 // Create new person instance on the heap and return that pointer
 //
 Person *create_new_person_and_return_pointer(
-        string first_name, 
-        string last_name, 
+        // string first_name, 
+        // string last_name, 
+        const char* first_name, 
+        const char* last_name, 
         Sex sex,
         uint8_t age,
         Location location) {
@@ -71,7 +76,7 @@ void print_person_info(Person* ptr) {
 //
 // Get back the person info (string) value
 //
-string get_person_info(Person* p) {
+const char* get_person_info(Person* p) {
 
     ostringstream os;
     os << 
@@ -87,7 +92,12 @@ string get_person_info(Person* p) {
         "\n\t\tcountry: " << p->location.country <<
         "\n}\n\n";
 
-    return os.str();
+    // Allocate the new `char []` and save the info
+    const char* temp_chars = os.str().c_str();
+    // char* info = new char[strlen(temp_chars) +1];
+    char* info = new char[strlen(temp_chars)];
+    strcpy(info, temp_chars);
+    return info;
 }
 
 //

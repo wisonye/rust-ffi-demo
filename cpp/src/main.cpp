@@ -33,8 +33,8 @@ int main() {
 
 
     Person* ptr_to_mike = create_new_person_and_return_pointer(
-        "Mike", 
-        "Ye", 
+        "Lucy", 
+        "Chen", 
         Sex::Male, 
         11, 
         Location {
