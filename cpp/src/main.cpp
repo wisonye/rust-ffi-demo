@@ -12,6 +12,8 @@ int main() {
     #endif
 
     // Call lib function from here >>>>>>>>>>>
+    
+    print_helloworld();
 
     print_person_info(NULL);
 

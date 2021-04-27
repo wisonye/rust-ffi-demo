@@ -1,8 +1,5 @@
 #pragma once
 //#include <string>
-#include <iostream>
-
-using namespace std;
 
 namespace Demo {
 
@@ -34,13 +31,10 @@ struct Person {
     const char* first_name;
     const char* last_name;
     Sex sex;
-    uint8_t age;
+    unsigned char age;
     Location location;
 
-    ~Person() {
-        cout << "[ Person instance get destroyed ] - first name: " 
-            << first_name << ", last name: " << last_name << endl;
-    }
+    ~Person();
 };
 
 // Return `Person` instance
@@ -50,7 +44,7 @@ Person create_new_person(
         const char* first_name, 
         const char* last_name, 
         Sex sex,
-        uint8_t age,
+        unsigned char age,
         Location location);
 
 // Return `Person` instance pointer
@@ -60,7 +54,7 @@ Person *create_new_person_and_return_pointer(
         const char* first_name, 
         const char* last_name, 
         Sex sex,
-        uint8_t age,
+        unsigned char age,
         Location location);
 
 // Pass the `Person` pointer as parameter
