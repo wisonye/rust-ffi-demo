@@ -11,7 +11,7 @@ cmake_minimum_required(VERSION "3.17.2")
 # - Windows
 # - Darwain
 #
-set(CMAKE_HOST_SYSTEM_NAME Darwin)
+# set(CMAKE_HOST_SYSTEM_NAME Darwin)
 
 
 # `CMAKE_SYSTEM_NAME` is by default set to the same value as the `CMAKE_HOST_SYSTEM_NAME` 
