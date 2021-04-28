@@ -25,7 +25,7 @@ Person::~Person() {
 // Apply `<<` operator to `Person` struct
 //
 std::ostream &operator<<(ostream &stream_out, const Person &p) {
-  stream_out << "\n[ Person Info ]\n{"
+  stream_out << "[ Person Info ]\n{"
              << "\n\tFirst name: " << p.first_name
              << "\n\tLast name: " << p.last_name << "\n\tSex: " << p.sex
              << "\n\tAge: " << (int)p.age << "\n\tLocation: "
