@@ -11,7 +11,7 @@ use std::path::PathBuf;
 
 fn main() {
     //
-    // The `rustc-link-lib` instruction tells `Cargo` to link the 
+    // The `rustc-link-lib` instruction tells `Cargo` to link the
     // given library using the compiler's `-l` flag. This is typically
     // used to link a native library using FFI.
     //
@@ -21,7 +21,7 @@ fn main() {
     println!("cargo:rustc-link-lib=dylib=demo");
 
     //
-    // The `rustc-link-search` instruction tells Cargo to pass the `-L` 
+    // The `rustc-link-search` instruction tells Cargo to pass the `-L`
     // flag to the compiler to add a directory to the library search path.
     //
     // The optional `KIND` may be one of the values below:
@@ -30,12 +30,10 @@ fn main() {
     // - `crate`: Only search for this crate's direct dependencies in this directory.
     // - `native`: Only search for native libraries in this directory.
     // - `framework`: Only search for macOS frameworks in this directory.
-    // - `all`: Search for all library kinds in this directory. This is the default 
+    // - `all`: Search for all library kinds in this directory. This is the default
     //          if KIND is not specified.
     //
     println!("cargo:rustc-link-search=native=cpp/build");
-
-
 
     #[cfg(not(feature = "enable-manual-bindings"))]
     {
@@ -45,17 +43,17 @@ fn main() {
         //
         // Write the bindings to the $OUT_DIR/bindings.rs file.
         //
-        // For example: "target/debug/build/ffi-demo-XXXXXXXXXXXXXXXX/out"
+        // For example:
+        // - target/debug/build/ffi-demo-XXXXXXXXXXXXXXXX/out/bindings.rs
+        // - target/release/build/ffi-demo-XXXXXXXXXXXXXXXX/out/bindings.rs
         //
         let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
         println!("out_put: {:#?}", &out_path);
 
-        // The bindgen::Builder is the main entry point
-        // to bindgen, and lets you build up options for
-        // the resulting bindings.
+        // The bindgen::Builder is the main entry point to bindgen, and lets 
+        // you build up options for the resulting bindings.
         let bindings = bindgen::Builder::default()
-            // The input header we would like to generate
-            // bindings for.
+            // The input header we would like to generate bindings for.
             .header("cpp/src/dynamic-lib/lib.h")
             // Not generate the layout test code
             .layout_tests(false)

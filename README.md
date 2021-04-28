@@ -668,3 +668,143 @@ will be trouble or inconvenience. That's how `bindgen` automatic `FFI` bindings 
 #### 4.2 Use `bindgen` automatic `FFI` bindings
 
 
+- Add the build dependencies to `Cargo.toml`:
+
+    ```rust
+    [build-dependencies]
+    bindgen = "~0.53.1"
+    ```
+
+    </br>
+
+- Replace the following content to the `build.rs`:
+
+    ```rust
+    // FFI custom build script.
+    
+    #[cfg(not(feature = "enable-manual-bindings"))]
+    use bindgen;
+    
+    #[cfg(not(feature = "enable-manual-bindings"))]
+    use std::env;
+    
+    #[cfg(not(feature = "enable-manual-bindings"))]
+    use std::path::PathBuf;
+    
+    fn main() {
+        //
+        // Link to `libdemo` dynamic library file
+        //
+        println!("cargo:rustc-link-lib=dylib=demo");
+    
+        //
+        // Let `Cargo` to pass the `-L` flag to the compiler to add
+        // the searching directory for the`native` library file
+        //
+        println!("cargo:rustc-link-search=native=cpp/build");
+    
+
+        #[cfg(not(feature = "enable-manual-bindings"))]
+        {
+            // Tell cargo to invalidate the built crate whenever the wrapper changes
+            println!("cargo:rerun-if-changed=cpp/src/dynamic-lib/lib.h");
+    
+            //
+            // Write the bindings to the $OUT_DIR/bindings.rs file.
+            //
+            // For example: 
+            // - target/debug/build/ffi-demo-XXXXXXXXXXXXXXXX/out/bindings.rs
+            // - target/release/build/ffi-demo-XXXXXXXXXXXXXXXX/out/bindings.rs
+            //
+            let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+            println!("out_put: {:#?}", &out_path);
+    
+            // The bindgen::Builder is the main entry point to bindgen, and lets 
+            // you build up options for the resulting bindings.
+            let bindings = bindgen::Builder::default()
+                // The input header we would like to generate bindings for.
+                .header("cpp/src/dynamic-lib/lib.h")
+                // Not generate the layout test code
+                .layout_tests(false)
+                // Not derive `Debug, Clone, Copy, Default` trait by default
+                .derive_debug(false)
+                .derive_copy(false)
+                .derive_default(false)
+                // Enable C++ namespace support
+                .enable_cxx_namespaces()
+                // Add extra clang args for supporting `C++`
+                .clang_arg("-x")
+                .clang_arg("c++")
+                .clang_arg("-std=c++17")
+                .clang_arg("-stdlib=libc++")
+                // Tell cargo to invalidate the built crate whenever any of the
+                // included header files changed.
+                .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+                // Finish the builder and generate the bindings.
+                .generate()
+                // Unwrap the Result and panic on failure.
+                .expect("Unable to generate bindings");
+    
+            bindings
+                .write_to_file(out_path.join("bindings.rs"))
+                .expect("Couldn't write bindings!");
+        }
+    }
+    ```
+
+    </br>
+
+- Add the following content to `src/main.rs`:
+
+    ```rust
+    #![allow(non_upper_case_globals)]
+    #![allow(non_camel_case_types)]
+    #![allow(non_snake_case)]
+    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+    
+    use root::Demo::{
+        create_new_person, get_person_info, print_helloworld, print_person_info,
+        release_person_pointer, Gender_Male, Location, Person,
+    };
+    use std::ffi::{CStr, CString};
+    
+    fn main() {
+        println!("[ Auto FFI bindgins call demo ]\n");
+    
+        //
+        // Ignore the some source code from `src/bin/manual_ffi_binding_demo.rs` here
+        //
+    
+    }
+    ```
+
+    The `inclulde!` line macros actually put all the bindings source code into
+    that line.
+
+    If you have the problem below when using `rust-analyzer`:
+
+    ![rust-analyzer-out-dir-issue.png](images/rust-analyzer-out-dir-issue.png)
+
+    Plz make sure you DO NOT have the `"rust-analyzer.cargo.loadOutDirsFromCheck": false,` 
+    settings in your configuration file (like `coc-settings.json` for example).
+
+    </br>
+
+- Build and run the demo:
+
+    ```bash
+    cargo clean && cargo build --release
+
+    LD_LIBRARY_PATH=./cpp/build/ ./target/release/ffi-demo
+    ```
+    
+    </br>
+
+From now on, `target/{BUILD_TYPE}/build/ffi-demo-XXXXXXXXXXXXXXXX/out/bindings.rs` will
+be generated automatic every time when you run `cargo build`. Then you don't need to 
+worry about running that manually or `bindings.rs` is the older version, more convenient
+than before.
+
+</br>
+
+
