@@ -1,7 +1,8 @@
 #include "lib.h"
+#include <cstring>
 #include <iostream>
 #include <sstream>
-// #include <string>
+#include <string>
 
 using namespace std;
 
@@ -10,18 +11,15 @@ namespace Demo {
 //
 // Simple case
 //
-void print_helloworld() {
-    cout << "Hello world to FFI:)" << endl;
-}
+void print_helloworld() { cout << "Hello world to FFI:)" << endl; }
 
 //
-// Customized destructor 
+// Customized destructor
 //
 Person::~Person() {
   cout << "[ Person instance get destroyed ] - first name: " << first_name
        << ", last name: " << last_name << endl;
 }
-
 
 //
 // Apply `<<` operator to `Person` struct
@@ -40,20 +38,9 @@ std::ostream &operator<<(ostream &stream_out, const Person &p) {
 }
 
 //
-// Create new person instance and return it
+// Create `Person` instance on the heap and return pointer
 //
-Person create_new_person(
-    // string first_name,
-    // string last_name,
-    const char *first_name, const char *last_name, Sex sex, uint8_t age,
-    Location location) {
-  return {first_name, last_name, sex, age, location};
-}
-
-//
-// Create new person instance on the heap and return that pointer
-//
-Person *create_new_person_and_return_pointer(
+Person *create_new_person(
     // string first_name,
     // string last_name,
     const char *first_name, const char *last_name, Sex sex, uint8_t age,
@@ -91,10 +78,11 @@ const char *get_person_info(Person *p) {
      << "\n\t\tcountry: " << p->location.state
      << "\n\t\tcountry: " << p->location.country << "\n}\n\n";
 
+  const string internal_str = os.str();
+
   // Allocate the new `char []` and save the info
-  const char *temp_chars = os.str().c_str();
-  // char* info = new char[strlen(temp_chars) +1];
-  char *info = new char[strlen(temp_chars)];
+  const char *temp_chars = internal_str.c_str();
+  char *info = new char[internal_str.length() + 1];
   strcpy(info, temp_chars);
   return info;
 }
@@ -102,9 +90,6 @@ const char *get_person_info(Person *p) {
 //
 // Release the person in memory
 //
-void release_person_pointer(Person *ptr) {
-  delete ptr;
-  memset(ptr, 0x00, sizeof(Person));
-}
+void release_person_pointer(Person *ptr) { delete ptr; }
 
 } // namespace Demo

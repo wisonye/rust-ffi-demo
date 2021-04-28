@@ -37,18 +37,8 @@ struct Person {
     ~Person();
 };
 
-// Return `Person` instance
-Person create_new_person(
-        // string first_name, 
-        // string last_name, 
-        const char* first_name, 
-        const char* last_name, 
-        Sex sex,
-        unsigned char age,
-        Location location);
-
-// Return `Person` instance pointer
-Person *create_new_person_and_return_pointer(
+// Create `Person` instance on the heap and return pointer
+Person* create_new_person(
         // string first_name, 
         // string last_name, 
         const char* first_name, 
