@@ -1,23 +1,23 @@
 # Rust `FFI` (Foreign Function Interface) Demo
 
-[1. What is `ABI` and `FFI`?](#1.-what-is-abi-and-ffi)</br>
+[1. What is `ABI` and `FFI`?](#1-what-is-abi-and-ffi)</br>
 
-[2. Let's build a `C++` library for this tutorial](#2.-let%E2%80%99s-build-a-c%2B%2B-library-for-this-tutorial)</br>
-[2.1 What will export via the `C++ Dynamic Library`](#2.1-what-will-export-via-the-c%2B%2B-dynamic-library%3A)</br>
-[2.2 Install `C++` and `cmake` building tools](#2.2-install-c%2B%2B-and-cmake-building-tools)</br>
-[2.3 Use `cmake` to compile a dynamic library](#2.3-use-cmake-to-compile-a-dynamic-library)</br>
-[2.4 How to inspect the library's dynamic symbol table](#2.4-how-to-inspect-the-library%E2%80%99s-dynamic-symbol-table)</br>
+[2. Let's build a `C++` library for this tutorial](#2-lets-build-a-c-library-for-this-tutorial)</br>
+[2.1 What will export via the `C++ Dynamic Library`](#21-what-will-export-via-the-c-dynamic-library)</br>
+[2.2 Install `C++` and `cmake` building tools](#22-install-c-and-cmake-building-tools)</br>
+[2.3 Use `cmake` to compile a dynamic library](#23-use-cmake-to-compile-a-dynamic-library)</br>
+[2.4 How to inspect the library's dynamic symbol table](#24-how-to-inspect-the-librarys-dynamic-symbol-table)</br>
 
-[3. How Rust deal with `FFI`?](#3.-how-rust-deal-with-ffi)</br>
-[3.1 `#[link]`](#3.1-%23%5Blink%5D)</br>
-[3.2 `extern` block](#3.2-extern)</br>
-[3.3 How to transfers data type between `Rust` and `C/C++`?](#3.3-how-rust-transfers-data-type-between-rust-and-c%2Fc%2B%2B%3F)</br>
-[3.4 How to generate the `extern` block from a `C/C++` header file?](#3.4-how-to-generate-the-extern-block-from-a-c%2Fc%2B%2B-header-file%3F)</br>
-[3.5 How `cargo build` knows where to link the `C++ dynamic library`?](#3.5-how-cargo-build-knows-where-to-link-the-c%2B%2B-dynamic-library%3F)</br>
+[3. How Rust deal with `FFI`?](#3-how-rust-deal-with-ffi)</br>
+[3.1 `#[link]`](#31-link)</br>
+[3.2 `extern` block](#32-extern)</br>
+[3.3 How to transfers data type between `Rust` and `C/C++`?](#33-how-rust-transfers-data-type-between-rust-and-cc)</br>
+[3.4 How to generate the `extern` block from a `C/C++` header file?](#34-how-to-generate-the-extern-block-from-a-cc-header-file)</br>
+[3.5 How `cargo build` knows where to link the `C++ dynamic library`?](#35-how-cargo-build-knows-where-to-link-the-c-dynamic-library)</br>
 
-[4. Let's call `C++` function in `Rust`](#4.-let%E2%80%99s-call-c%2B%2B-function-in-rust)</br>
-[4.1 Use manual `FFI` bindings](#4.1-use-manual-ffi-bindings)</br>
-[4.2 Use `bindgen` automatic `FFI` bindings](#4.2-use-bindgen-automatic-ffi-bindings)</br>
+[4. Let's call `C++` function in `Rust`](#4-lets-call-c-function-in-rust)</br>
+[4.1 Use manual `FFI` bindings](#41-use-manual-ffi-bindings)</br>
+[4.2 Use `bindgen` automatic `FFI` bindings](#42-use-bindgen-automatic-ffi-bindings)</br>
 
 
 ## 1. What is `ABI` and `FFI`
@@ -306,7 +306,7 @@ The `#[link_name]` helps link to the correct external function which can be gene
 
 There are two modules to handle that:
 
-- [`std::os:raw`](https://doc.rust-lang.org/stable/std/os/raw/index.html`): Platform-specific types, as defined by C.
+- [`std::os:raw`](https://doc.rust-lang.org/stable/std/os/raw/index.html): Platform-specific types, as defined by C.
     
     | Rust type     | C/C++ type |
     |-------------- |----------------------------
