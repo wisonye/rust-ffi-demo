@@ -3,7 +3,7 @@ mod manual_bindings;
 
 use manual_bindings::root::Demo::{
     create_new_person, get_person_info, print_helloworld, print_person_info, Location, Person,
-    Sex_Male,
+    Gender_Male,
 };
 use std::ffi::{CStr, CString};
 
@@ -37,7 +37,7 @@ fn main() -> () {
         let wison: *mut Person = create_new_person(
             wison_first_name.as_ptr(),
             wison_last_name.as_ptr(),
-            Sex_Male,
+            Gender_Male,
             18,
             wison_location,
         );

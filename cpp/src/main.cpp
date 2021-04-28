@@ -19,7 +19,7 @@ int main() {
 
   {
     Person *ptr_to_wison =
-        create_new_person("Wison", "Ye", Sex::Male, 88,
+        create_new_person("Wison", "Ye", Gender::Male, 88,
                           Location{"No 10, ABC Street", "Nice city",
                                    "Nice state", "Nice country"});
     print_person_info(ptr_to_wison);
@@ -30,7 +30,7 @@ int main() {
 
   Person *ptr_to_lucy;
   {
-    ptr_to_lucy = create_new_person("Lucy", "Chen", Sex::Female, 11,
+    ptr_to_lucy = create_new_person("Lucy", "Chen", Gender::Female, 11,
                                     Location{"No 11, ABC Street", "Nice city",
                                              "Nice state", "Nice country"});
 

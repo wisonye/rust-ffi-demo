@@ -9,9 +9,9 @@ pub mod root {
             #[link_name = "\u{1}_ZN4Demo16print_helloworldEv"]
             pub fn print_helloworld();
         }
-        pub const Sex_Female: root::Demo::Sex = 0;
-        pub const Sex_Male: root::Demo::Sex = 1;
-        pub type Sex = ::std::os::raw::c_uint;
+        pub const Gender_Female: root::Demo::Gender = 0;
+        pub const Gender_Male: root::Demo::Gender = 1;
+        pub type Gender = ::std::os::raw::c_uint;
         #[repr(C)]
         pub struct Location {
             pub street_address: *const ::std::os::raw::c_char,
@@ -23,7 +23,7 @@ pub mod root {
         pub struct Person {
             pub first_name: *const ::std::os::raw::c_char,
             pub last_name: *const ::std::os::raw::c_char,
-            pub sex: root::Demo::Sex,
+            pub sex: root::Demo::Gender,
             pub age: ::std::os::raw::c_uchar,
             pub location: root::Demo::Location,
         }
@@ -38,11 +38,11 @@ pub mod root {
             }
         }
         extern "C" {
-            #[link_name = "\u{1}_ZN4Demo17create_new_personEPKcS1_NS_3SexEhNS_8LocationE"]
+            #[link_name = "\u{1}_ZN4Demo17create_new_personEPKcS1_NS_6GenderEhNS_8LocationE"]
             pub fn create_new_person(
                 first_name: *const ::std::os::raw::c_char,
                 last_name: *const ::std::os::raw::c_char,
-                sex: root::Demo::Sex,
+                sex: root::Demo::Gender,
                 age: ::std::os::raw::c_uchar,
                 location: root::Demo::Location,
             ) -> *mut root::Demo::Person;

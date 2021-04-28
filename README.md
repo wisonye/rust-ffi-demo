@@ -61,7 +61,7 @@ void print_helloworld();
 // A more complex case with `enum`, `struct`, and a couple of
 // functions to manipulate those data.
 //
-enum Sex {
+enum Gender {
     Female, Male
 };
 
@@ -81,7 +81,7 @@ struct Person {
     // string last_name;
     const char* first_name;
     const char* last_name;
-    Sex sex;
+    Gender sex;
     unsigned char age;
     Location location;
 
@@ -94,7 +94,7 @@ Person* create_new_person(
         // string last_name, 
         const char* first_name, 
         const char* last_name, 
-        Sex sex,
+        Gender sex,
         unsigned char age,
         Location location);
 
@@ -165,26 +165,24 @@ libdemo.dll
     objdump -T libdemo.so | grep "hello\|person\|Person\|Location"
     # 0000000000000000      DF *UND*  0000000000000000              __gxx_personality_v0
     # 0000000000003310 g    DF .text  00000000000000b4  Base        _ZN4Demo16print_helloworldEv
-    # 0000000000003720 g    DF .text  0000000000000224  Base        _ZN4Demo17print_person_infoEPNS_6PersonE
+    # 00000000000036f0 g    DF .text  0000000000000224  Base        _ZN4Demo17print_person_infoEPNS_6PersonE
     # 00000000000033d0 g    DF .text  0000000000000107  Base        _ZN4Demo6PersonD1Ev
     # 00000000000033d0 g    DF .text  0000000000000107  Base        _ZN4Demo6PersonD2Ev
-    # 0000000000003950 g    DF .text  000000000000038e  Base        _ZN4Demo15get_person_infoEPNS_6PersonE
-    # 00000000000036a0 g    DF .text  0000000000000024  Base        _ZN4Demo17create_new_personEPKcS1_NS_3SexEhNS_8LocationE
+    # 0000000000003920 g    DF .text  00000000000003ed  Base        _ZN4Demo15get_person_infoEPNS_6PersonE
     # 00000000000034e0 g    DF .text  00000000000001ba  Base        _ZN4DemolsERNSt3__113basic_ostreamIcNS0_11char_traitsIcEEEERKNS_6PersonE
-    # 0000000000003ce0 g    DF .text  0000000000000031  Base        _ZN4Demo22release_person_pointerEPNS_6PersonE
-    # 00000000000036d0 g    DF .text  0000000000000049  Base        _ZN4Demo36create_new_person_and_return_pointerEPKcS1_NS_3SexEhNS_8LocationE
+    # 0000000000003d10 g    DF .text  0000000000000018  Base        _ZN4Demo22release_person_pointerEPNS_6PersonE
+    # 00000000000036a0 g    DF .text  0000000000000049  Base        _ZN4Demo17create_new_personEPKcS1_NS_6GenderEhNS_8LocationE
 
 
     # Or
-    nm -f bsd libdemo.dylib | grep "hello\|person\|Person\|Location"
+    nm -f bsd libdemo.so | grep "hello\|person\|Person\|Location"
     # 0000000000007128 d DW.ref.__gxx_personality_v0
     #                  U __gxx_personality_v0
-    # 0000000000003950 T _ZN4Demo15get_person_infoEPNS_6PersonE
+    # 0000000000003920 T _ZN4Demo15get_person_infoEPNS_6PersonE
     # 0000000000003310 T _ZN4Demo16print_helloworldEv
-    # 00000000000036a0 T _ZN4Demo17create_new_personEPKcS1_NS_3SexEhNS_8LocationE
-    # 0000000000003720 T _ZN4Demo17print_person_infoEPNS_6PersonE
-    # 0000000000003ce0 T _ZN4Demo22release_person_pointerEPNS_6PersonE
-    # 00000000000036d0 T _ZN4Demo36create_new_person_and_return_pointerEPKcS1_NS_3SexEhNS_8LocationE
+    # 00000000000036a0 T _ZN4Demo17create_new_personEPKcS1_NS_6GenderEhNS_8LocationE
+    # 00000000000036f0 T _ZN4Demo17print_person_infoEPNS_6PersonE
+    # 0000000000003d10 T _ZN4Demo22release_person_pointerEPNS_6PersonE
     # 00000000000033d0 T _ZN4Demo6PersonD1Ev
     # 00000000000033d0 T _ZN4Demo6PersonD2Ev
     # 00000000000034e0 T _ZN4DemolsERNSt3__113basic_ostreamIcNS0_11char_traitsIcEEEERKNS_6PersonE
@@ -198,10 +196,10 @@ libdemo.dll
     objdump -t libdemo.dylib | grep "hello\|person\|Person\|Location"
     # 0000000000002390 lw    F __TEXT,__text  __ZN4Demo6PersonD2Ev
     # 00000000000018f0 g     F __TEXT,__text  __ZN4Demo15get_person_infoEPNS_6PersonE
-    # 00000000000015a0 g     F __TEXT,__text  __ZN4Demo17create_new_personEPKcS1_NS_3SexEhNS_8LocationE
+    # 00000000000015a0 g     F __TEXT,__text  __ZN4Demo17create_new_personEPKcS1_NS_3GenderEhNS_8LocationE
     # 0000000000001640 g     F __TEXT,__text  __ZN4Demo17print_person_infoEPNS_6PersonE
     # 0000000000001ca0 g     F __TEXT,__text  __ZN4Demo22release_person_pointerEPNS_6PersonE
-    # 00000000000015e0 g     F __TEXT,__text  __ZN4Demo36create_new_person_and_return_pointerEPKcS1_NS_3SexEhNS_8LocationE
+    # 00000000000015e0 g     F __TEXT,__text  __ZN4Demo36create_new_person_and_return_pointerEPKcS1_NS_3GenderEhNS_8LocationE
     # 00000000000013d0 g     F __TEXT,__text  __ZN4DemolsERNSt3__113basic_ostreamIcNS0_11char_traitsIcEEEERKNS_6PersonE
 
 

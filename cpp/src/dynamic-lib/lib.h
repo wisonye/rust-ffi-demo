@@ -10,7 +10,7 @@ void print_helloworld();
 // A more complex case with `enum`, `struct`, and a couple of
 // functions to manipulate those data.
 //
-enum Sex {
+enum Gender {
     Female, Male
 };
 
@@ -30,7 +30,7 @@ struct Person {
     // string last_name;
     const char* first_name;
     const char* last_name;
-    Sex sex;
+    Gender sex;
     unsigned char age;
     Location location;
 
@@ -43,7 +43,7 @@ Person* create_new_person(
         // string last_name, 
         const char* first_name, 
         const char* last_name, 
-        Sex sex,
+        Gender sex,
         unsigned char age,
         Location location);
 
