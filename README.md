@@ -194,17 +194,26 @@ libdemo.dll
 
     ```bash
     objdump -t libdemo.dylib | grep "hello\|person\|Person\|Location"
-    # 0000000000002390 lw    F __TEXT,__text  __ZN4Demo6PersonD2Ev
-    # 00000000000018f0 g     F __TEXT,__text  __ZN4Demo15get_person_infoEPNS_6PersonE
-    # 00000000000015a0 g     F __TEXT,__text  __ZN4Demo17create_new_personEPKcS1_NS_3GenderEhNS_8LocationE
-    # 0000000000001640 g     F __TEXT,__text  __ZN4Demo17print_person_infoEPNS_6PersonE
-    # 0000000000001ca0 g     F __TEXT,__text  __ZN4Demo22release_person_pointerEPNS_6PersonE
-    # 00000000000015e0 g     F __TEXT,__text  __ZN4Demo36create_new_person_and_return_pointerEPKcS1_NS_3GenderEhNS_8LocationE
-    # 00000000000013d0 g     F __TEXT,__text  __ZN4DemolsERNSt3__113basic_ostreamIcNS0_11char_traitsIcEEEERKNS_6PersonE
+    # 00000000000019a0 g     F __TEXT,__text  __ZN4Demo15get_person_infoEPNS_6PersonE
+    # 0000000000001310 g     F __TEXT,__text  __ZN4Demo16print_helloworldEv
+    # 0000000000001690 g     F __TEXT,__text  __ZN4Demo17create_new_personEPKcS1_NS_6GenderEhNS_8LocationE
+    # 00000000000016f0 g     F __TEXT,__text  __ZN4Demo17print_person_infoEPNS_6PersonE
+    # 0000000000001d80 g     F __TEXT,__text  __ZN4Demo22release_person_pointerEPNS_6PersonE
+    # 00000000000014b0 g     F __TEXT,__text  __ZN4Demo6PersonD1Ev
+    # 00000000000013b0 g     F __TEXT,__text  __ZN4Demo6PersonD2Ev
+    # 00000000000014c0 g     F __TEXT,__text  __ZN4DemolsERNSt3__113basic_ostreamIcNS0_11char_traitsIcEEEERKNS_6PersonE
 
 
     # Or
     nm -f bsd libdemo.dylib | grep "hello\|person\|Person\|Location"
+    # 00000000000019a0 T __ZN4Demo15get_person_infoEPNS_6PersonE
+    # 0000000000001310 T __ZN4Demo16print_helloworldEv
+    # 0000000000001690 T __ZN4Demo17create_new_personEPKcS1_NS_6GenderEhNS_8LocationE
+    # 00000000000016f0 T __ZN4Demo17print_person_infoEPNS_6PersonE
+    # 0000000000001d80 T __ZN4Demo22release_person_pointerEPNS_6PersonE
+    # 00000000000014b0 T __ZN4Demo6PersonD1Ev
+    # 00000000000013b0 T __ZN4Demo6PersonD2Ev
+    # 00000000000014c0 T __ZN4DemolsERNSt3__113basic_ostreamIcNS0_11char_traitsIcEEEERKNS_6PersonE
 
 
     # Also, you can print the shared libraries used for linked Mach-O files:
@@ -540,6 +549,53 @@ fn main() {
         -stdlib=libc++
     ```
 
+    After that, you can see some bindings like below:
+
+    ```rust
+    #[repr(C)]
+    pub struct Person {
+        pub first_name: *const ::std::os::raw::c_char,
+        pub last_name: *const ::std::os::raw::c_char,
+        pub sex: root::Demo::Gender,
+        pub age: ::std::os::raw::c_uchar,
+        pub location: root::Demo::Location,
+    }
+
+    extern "C" {
+        #[link_name = "\u{1}__ZN4Demo17create_new_personEPKcS1_NS_6GenderEhNS_8LocationE"]
+        pub fn create_new_person(
+            first_name: *const ::std::os::raw::c_char,
+            last_name: *const ::std::os::raw::c_char,
+            sex: root::Demo::Gender,
+            age: ::std::os::raw::c_uchar,
+            location: root::Demo::Location,
+        ) -> *mut root::Demo::Person;
+    }
+    ```
+
+    </br>
+
+    - `#[repr(C)]`:
+
+        `repr` stands for `representation`, it describes a `Type Layout` which you will find
+        more explanation at [here](https://doc.rust-lang.org/reference/type-layout.html).
+
+        This is the most important `repr`. It has fairly simple intent: **do what C does**. The 
+        order, size, and alignment of fields is exactly what you would expect from C or C++. Any 
+        type you expect to pass through an FFI boundary should have `repr(C)`.
+
+        If you don't do that, you will get the warning like below and your executable will crash 
+        with `SIGSEGV` error.:
+
+        ```bash
+        warning: `extern` block uses type `Person`, which is not FFI-safe
+        ```
+
+    - `[link_name]`
+
+        The `link_name` attribute indicates the symbol to import for the given function which
+        you've already saw it above via the `objdump` command.
+
     </br>
 
 
@@ -574,14 +630,38 @@ fn main() {
     ```bash
     cargo clean && cargo build \
         --bin manual_ffi_binding_demo \
-        --features "enable-manual-bindings"
+        --features "enable-manual-bindings" \
+        --release
     
-    LD_LIBRARY_PATH=./cpp/build/ ./target/debug/manual_ffi_binding_demo
+    LD_LIBRARY_PATH=./cpp/build/ ./target/release/manual_ffi_binding_demo
     ```
 
     You should see demo output like below:
 
     ![manual_ffi_binding_demo.png](./images/manual_ffi_binding_demo.png)
+
+    If you print the symbol table for the release executable, you should be able to 
+    notic that it relies on the FFI functions in the `C++ Dynamic Library`:
+
+    ```bash
+    nm -f bsd target/release/manual_ffi_binding_demo | grep "hello\|person\|Person\|Location"
+                     U __ZN4Demo15get_person_infoEPNS_6PersonE
+                     U __ZN4Demo16print_helloworldEv
+                     U __ZN4Demo17create_new_personEPKcS1_NS_6GenderEhNS_8LocationE
+                     U __ZN4Demo17print_person_infoEPNS_6PersonE
+                     U __ZN4Demo22release_person_pointerEPNS_6PersonE
+    ```
+
+</br>
+
+So, you've already learned how to do that in a `manual bindings` way. The advantage of this 
+way is that you have an FFI binding source code when you're coding, then your editor (with
+Rust language plugin) can detect any error or show you the code completion handy feature 
+when you're typing. 
+
+But the disadvantage is that you need to run `bindgen` manually every time, as the function
+symbol will be changed every time after you re-generate the `C++ Dynamic Library`. That
+will be trouble or inconvenience. That's how `bindgen` automatic `FFI` bindings can help.
 
 </br>
 
