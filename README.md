@@ -1,6 +1,26 @@
 # Rust `FFI` (Foreign Function Interface) Demo
 
-## 1. What is `ABI` and `FFI`?
+[1. What is `ABI` and `FFI`?](#1.-what-is-abi-and-ffi)</br>
+
+[2. Let's build a `C++` library for this tutorial](#2.-let%E2%80%99s-build-a-c%2B%2B-library-for-this-tutorial)</br>
+[2.1 What will export via the `C++ Dynamic Library`](#2.1-what-will-export-via-the-c%2B%2B-dynamic-library%3A)</br>
+[2.2 Install `C++` and `cmake` building tools](#2.2-install-c%2B%2B-and-cmake-building-tools)</br>
+[2.3 Use `cmake` to compile a dynamic library](#2.3-use-cmake-to-compile-a-dynamic-library)</br>
+[2.4 How to inspect the library's dynamic symbol table](#2.4-how-to-inspect-the-library%E2%80%99s-dynamic-symbol-table)</br>
+
+[3. How Rust deal with `FFI`?](#3.-how-rust-deal-with-ffi)</br>
+[3.1 `#[link]`](#3.1-%23%5Blink%5D)</br>
+[3.2 `extern` block](#3.2-extern)</br>
+[3.3 How to transfers data type between `Rust` and `C/C++`?](#3.3-how-rust-transfers-data-type-between-rust-and-c%2Fc%2B%2B%3F)</br>
+[3.4 How to generate the `extern` block from a `C/C++` header file?](#3.4-how-to-generate-the-extern-block-from-a-c%2Fc%2B%2B-header-file%3F)</br>
+[3.5 How `cargo build` knows where to link the `C++ dynamic library`?](#3.5-how-cargo-build-knows-where-to-link-the-c%2B%2B-dynamic-library%3F)</br>
+
+[4. Let's call `C++` function in `Rust`](#4.-let%E2%80%99s-call-c%2B%2B-function-in-rust)</br>
+[4.1 Use manual `FFI` bindings](#4.1-use-manual-ffi-bindings)</br>
+[4.2 Use `bindgen` automatic `FFI` bindings](#4.2-use-bindgen-automatic-ffi-bindings)</br>
+
+
+## 1. What is `ABI` and `FFI`
 
 - `ABI` which stands for `Application Binary Interface`.
 
@@ -24,214 +44,158 @@
 
 </br>
 
-## 2. How Rust deal with `FFI`?
+## 2. Let's build a `C++` library for this tutorial
 
-Rust uses `#[link]` attribute and `extern` keyword to interact with the external function calls:
+#### 2.1 What will export via the `C++ Dynamic Library`:
 
-- `#[link]`:
+```c++
+#pragma once
+//#include <string>
 
-    The link attribute specifies the name of a native library that the compiler should link with for the items within an extern block. 
+namespace Demo {
 
-    ```rust
-    #[link(name = "demo")]
-    extern {
-        // …
-    }
-    ```
+// Simple function case
+void print_helloworld();
 
-    In the above sample, `rustc` would try to link with `libdemo.so` on unix-like systems and 
-    `demo.dll `on Windows at runtime. It panics if it can't find something to link to.
+//
+// A more complex case with `enum`, `struct`, and a couple of
+// functions to manipulate those data.
+//
+enum Sex {
+    Female, Male
+};
 
-    That's why you need to make sure `rustc` can find the libaray file via the system lib path.
-    For example in `macOS`, it would one of the path below:
+struct Location {
+    // string street_address;
+    // string city;
+    // string state;
+    // string country;
+    const char* street_address;
+    const char* city;
+    const char* state;
+    const char* country;
+};
 
-    - `$LD_LIBRARY_PATH`
-    - `/Library/Developer/CommandLineTools/usr/lib/`
-    - `/Library/Developer/CommandLineTools/usr/lib/clang/{VERSION}/lib/darwin/`
-    - etc.
+struct Person {
+    // string first_name;
+    // string last_name;
+    const char* first_name;
+    const char* last_name;
+    Sex sex;
+    unsigned char age;
+    Location location;
 
-    </br>
+    ~Person();
+};
 
-    Or, you can put the extra path with the `name` like below:
+// Create `Person` instance on the heap and return pointer
+Person* create_new_person(
+        // string first_name, 
+        // string last_name, 
+        const char* first_name, 
+        const char* last_name, 
+        Sex sex,
+        unsigned char age,
+        Location location);
 
-    ```rust
-    #[link(name = "cpp/build/demo.dylib")]
-    extern {
-        // …
-    }
-    ```
+// Pass the `Person` pointer as parameter
+void print_person_info(Person* ptr);
 
-    </br>
+// Pass the `Person` pointer as parameter and get back C-style string
+const char* get_person_info(Person* p);
 
-    Also, you can add the `kind` value to say which kind the library it is:
+// Pass the `Person` pointer as parameter
+void release_person_pointer(Person* ptr);
 
-    - `dylib` — Indicates a dynamic library. This is the default if kind is not specified.
-    - `static` — Indicates a static library.
-    - `framework` — Indicates a `macOS` framework. This is only valid for `macOS` targets.
-    
-    </br>
+} // namespace Demo
+```
 
-    Here is the sample:
+As you can see above, the `C++ Dynamic Library` will export some `enum` and `struct` types and some functions to maniplulate those stuff.
 
-    ```rust
-    #[link(name = "CoreFoundation", kind = "framework")]
-    extern {
-        // …
-    }
-    ```
+Because the `std::string` actually is a `class` (like a `vector<char>` or `vector<w_char>`) to manage the strings, it uses to enhance the `C-style string` (a char array), so we don't use this type at this moment to reduce the complexicy.
 
-    </br>
-
-    Another value you can put there is the `wasm_import_module` which use for linking
-    to the `WebAssembly` module case:
-    
-    ```rust
-    #[link(wasm_import_module = "wasm_demo")]
-    extern {
-        // …
-    }
-    ```
-
-    </br>
-
-- `extern`:
-    
-    The [`extern`](https://doc.rust-lang.org/stable/std/keyword.extern.html) block includes all the external function signatures.
-
-    ```rust
-    #[link(name = "demo_c_lib")]
-    extern "C" {
-        fn my_c_function(x: i32) -> bool;
-    }
-    ```
-
-    The `C` part actually is the `ABI` string, you can just write `extern` without `C` as the `C` is the default ABI.
-
-    Below is the `ABI` support list from [official `ABI` section](https://doc.rust-lang.org/stable/reference/items/external-blocks.html):
-    
-    ![rust-abi-list.png](./images/rust-abi-list.png)
 </br>
 
-## 3. Let's build a `C++` library for this tutorial
+#### 2.2 Install `C++` and `cmake` building tools
 
-- What will export via the `C++ Dynamic Library`:
-
-    ```c++
-    #pragma once
-    //#include <string>
-    #include <iostream>
+- Arch
     
-    using namespace std;
-    
-    namespace Demo {
-    
-    // Simple function case
-    void print_helloworld();
-    
-    //
-    // A more complex case with `enum`, `struct`, and a couple of
-    // functions to manipulate those data.
-    //
-    enum Sex {
-        Female, Male
-    };
-    
-    struct Location {
-        // string street_address;
-        // string city;
-        // string state;
-        // string country;
-        const char* street_address;
-        const char* city;
-        const char* state;
-        const char* country;
-    };
-    
-    struct Person {
-        // string first_name;
-        // string last_name;
-        const char* first_name;
-        const char* last_name;
-        Sex sex;
-        uint8_t age;
-        Location location;
-    
-        ~Person() {
-            cout << "[ Person instance get destroyed ] - first name: " 
-                << first_name << ", last name: " << last_name << endl;
-        }
-    };
-    
-    // Return `Person` instance
-    Person create_new_person(
-            // string first_name, 
-            // string last_name, 
-            const char* first_name, 
-            const char* last_name, 
-            Sex sex,
-            uint8_t age,
-            Location location);
-    
-    // Return `Person` instance pointer
-    Person *create_new_person_and_return_pointer(
-            // string first_name, 
-            // string last_name, 
-            const char* first_name, 
-            const char* last_name, 
-            Sex sex,
-            uint8_t age,
-            Location location);
-    
-    // Pass the `Person` pointer as parameter
-    void print_person_info(Person* ptr);
-    
-    // Pass the `Person` pointer as parameter and get back C-style string
-    const char* get_person_info(Person* ptr);
-    
-    // Pass the `Person` pointer as parameter
-    void release_person_pointer(Person* ptr);
-    
-    } // namespace Demo
+    ```bash
+    sudo pacman --sync --refresh clang libc++ cmake
     ```
 
-    As you can see above, the `C++ Dynamic Library` will export some `enum` and `struct` types and some functions to maniplulate those stuff.
-
-    Because the `std::string` actually is a `class` (like a `vector<char>` or `vector<w_char>`) to manage the strings, it uses to enhance the `C-style string` (a char array), so we don't use this type at this moment to reduce the complexicy.
-
-    </br>
-
-- Use `cmake` to compile a dynamic library
+- MacOS
 
     ```bash
-    cd cpp && rm -rf build && mkdir build && cd build
-    cmake ../ && make
+    brew install llvm clang cmake
     ```
 
-    After that, `cmake` compiles your cpp project and generate the files below in the `cpp/build` folder:
+</br>
+
+#### 2.3 Use `cmake` to compile a dynamic library
+
+```bash
+cd cpp && rm -rf build && mkdir build && cd build
+cmake ../ && make
+```
+
+After that, `cmake` compiles your cpp project and generate the files below in the `cpp/build` folder:
+
+```bash
+ffi-demo-cpp-lib_debug_version
+ffi-demo-cpp-lib
+
+# This is the C++ dynamic library which uses in this FFI demo
+# The library filename extension will be:
+# - `.dylib` on `MacOS`
+libdemo.dylib
+# - `.so` on `Linux`
+libdemo.so
+# - `.dll` on `Windows`
+libdemo.dll
+```
+
+</br>
+
+#### 2.4 How to inspect the library's dynamic symbol table
+
+- Linux
 
     ```bash
-    ffi-demo-cpp-lib_debug_version
-    ffi-demo-cpp-lib
+    objdump -T libdemo.so | grep "hello\|person\|Person\|Location"
+    # 0000000000000000      DF *UND*  0000000000000000              __gxx_personality_v0
+    # 0000000000003310 g    DF .text  00000000000000b4  Base        _ZN4Demo16print_helloworldEv
+    # 0000000000003720 g    DF .text  0000000000000224  Base        _ZN4Demo17print_person_infoEPNS_6PersonE
+    # 00000000000033d0 g    DF .text  0000000000000107  Base        _ZN4Demo6PersonD1Ev
+    # 00000000000033d0 g    DF .text  0000000000000107  Base        _ZN4Demo6PersonD2Ev
+    # 0000000000003950 g    DF .text  000000000000038e  Base        _ZN4Demo15get_person_infoEPNS_6PersonE
+    # 00000000000036a0 g    DF .text  0000000000000024  Base        _ZN4Demo17create_new_personEPKcS1_NS_3SexEhNS_8LocationE
+    # 00000000000034e0 g    DF .text  00000000000001ba  Base        _ZN4DemolsERNSt3__113basic_ostreamIcNS0_11char_traitsIcEEEERKNS_6PersonE
+    # 0000000000003ce0 g    DF .text  0000000000000031  Base        _ZN4Demo22release_person_pointerEPNS_6PersonE
+    # 00000000000036d0 g    DF .text  0000000000000049  Base        _ZN4Demo36create_new_person_and_return_pointerEPKcS1_NS_3SexEhNS_8LocationE
 
-    # This is the C++ dynamic library which uses in this FFI demo
-    # The library filename extension will be:
-    # - `.dylib` on `MacOS`
-    # - `.so` on `Linux`
-    # - `.dll` on `Windows`
-    libdemo.dylib
+
+    # Or
+    nm -f bsd libdemo.dylib | grep "hello\|person\|Person\|Location"
+    # 0000000000007128 d DW.ref.__gxx_personality_v0
+    #                  U __gxx_personality_v0
+    # 0000000000003950 T _ZN4Demo15get_person_infoEPNS_6PersonE
+    # 0000000000003310 T _ZN4Demo16print_helloworldEv
+    # 00000000000036a0 T _ZN4Demo17create_new_personEPKcS1_NS_3SexEhNS_8LocationE
+    # 0000000000003720 T _ZN4Demo17print_person_infoEPNS_6PersonE
+    # 0000000000003ce0 T _ZN4Demo22release_person_pointerEPNS_6PersonE
+    # 00000000000036d0 T _ZN4Demo36create_new_person_and_return_pointerEPKcS1_NS_3SexEhNS_8LocationE
+    # 00000000000033d0 T _ZN4Demo6PersonD1Ev
+    # 00000000000033d0 T _ZN4Demo6PersonD2Ev
+    # 00000000000034e0 T _ZN4DemolsERNSt3__113basic_ostreamIcNS0_11char_traitsIcEEEERKNS_6PersonE
     ```
 
     </br>
 
-- How to inspect the library's dynamic symbol table
+- MacOS
 
     ```bash
-    # Linux print dynamic symbol table
-    objdump -T libdemo.so | grep "person\|Person\|Location"
-
-
-    # MacOS(Darwin) can't print dynamic symbol table directly, so you can do either in this way:
-    objdump -t libdemo.dylib | grep "person\|Person\|Location"
+    objdump -t libdemo.dylib | grep "hello\|person\|Person\|Location"
     # 0000000000002390 lw    F __TEXT,__text  __ZN4Demo6PersonD2Ev
     # 00000000000018f0 g     F __TEXT,__text  __ZN4Demo15get_person_infoEPNS_6PersonE
     # 00000000000015a0 g     F __TEXT,__text  __ZN4Demo17create_new_personEPKcS1_NS_3SexEhNS_8LocationE
@@ -241,8 +205,8 @@ Rust uses `#[link]` attribute and `extern` keyword to interact with the external
     # 00000000000013d0 g     F __TEXT,__text  __ZN4DemolsERNSt3__113basic_ostreamIcNS0_11char_traitsIcEEEERKNS_6PersonE
 
 
-    # Or this way:
-    nm -f bsd libdemo.dylib | grep "person\|Person\|Location"
+    # Or
+    nm -f bsd libdemo.dylib | grep "hello\|person\|Person\|Location"
 
 
     # Also, you can print the shared libraries used for linked Mach-O files:
@@ -252,181 +216,377 @@ Rust uses `#[link]` attribute and `extern` keyword to interact with the external
     #         /usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 400.9.4)
     #         /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1252.250.1)
     ```
+
+</br>
+
+## 3. How Rust deal with `FFI`
+
+#### 3.1 `#[link]`
+
+The link attribute specifies the name of a native library 
+that the compiler should link with for the items within an
+extern block. 
+
+```rust
+#[link(name = "demo")]
+extern {
+    // …
+}
+```
+
+In the above sample, `rustc` would try to link with `libdemo.so`
+on unix-like systems and `demo.dll `on Windows at runtime. It 
+panics if it can't find something to link to.  That's why you need
+to make sure `rustc` can find the library file when linking. 
+
+Also, you can add the `kind` value to say which kind the library it is:
+
+- `dylib` — Indicates a dynamic library. This is the default if kind is not specified.
+- `static` — Indicates a static library.
+- `framework` — Indicates a `macOS` framework. This is only valid for `macOS` targets.
+
+</br>
+
+Here is the sample:
+
+```rust
+#[link(name = "CoreFoundation", kind = "framework")]
+extern {
+    // …
+}
+```
+
+</br>
+
+Another value you can put there is the `wasm_import_module` which use for linking
+to the `WebAssembly` module case:
+
+```rust
+#[link(wasm_import_module = "wasm_demo")]
+extern {
+    // …
+}
+```
+
+</br>
+
+
+**Actually, the best practice is NOT use `#[link]` on the `extern` block. Instead, use the cargo instructions below in **`build.rs`** which will mentioned in the later chapters.**
+
+- `cargo:rustc-link-lib=dylib=demo`
+- `cargo:rustc-link-search=native=cpp/build`
+
+</br>
+
+#### 3.2 `extern`
     
+The [`extern`](https://doc.rust-lang.org/stable/std/keyword.extern.html) block includes all the external function signatures.
+
+```rust
+#[link(name = "demo_c_lib")]
+extern "C" {
+    #[link_name = "\u{1}_ZN4Demo16my_c_functionEv"]
+    fn my_c_function(x: i32) -> bool;
+}
+```
+
+The `C` part actually is the `ABI` string, you can just write `extern` without `C` as the `C` is the default ABI.
+
+Below is the `ABI` support list from [official `ABI` section](https://doc.rust-lang.org/stable/reference/items/external-blocks.html):
+
+![rust-abi-list.png](./images/rust-abi-list.png)
+
+</br>
+
+The `#[link_name]` helps link to the correct external function which can be generated by the `bindgen` command.
+
+</br>
+
+#### 3.3 How `Rust` transfers data type between `Rust` and `C/C++`?
+
+There are two modules to handle that:
+
+- [`std::os:raw`](https://doc.rust-lang.org/stable/std/os/raw/index.html`): Platform-specific types, as defined by C.
+    
+    | Rust type     | C/C++ type |
+    |-------------- |----------------------------
+    | `c_char`      | Equivalent to C's `char` type.
+    | `c_double`    | Equivalent to C's `double` type.
+    | `c_float`     | Equivalent to C's `float` type.
+    | `c_int`       | Equivalent to C's `signed int (int)` type.
+    | `c_long`      | Equivalent to C's `signed long (long)` type.
+    | `c_longlong`  | Equivalent to C's `signed long long (long long)` type.
+    | `c_schar`     | Equivalent to C's `signed char` type.
+    | `c_short`     | Equivalent to C's `signed short (short)` type.
+    | `c_uchar`     | Equivalent to C's `unsigned char` type.
+    | `c_uint`      | Equivalent to C's `unsigned int` type.
+    | `c_ulong`     | Equivalent to C's `unsigned long` type.
+    | `c_ulonglong` | Equivalent to C's `unsigned long long` type.
+    | `c_ushort`    | Equivalent to C's `unsigned short` type.
+
     </br>
 
-## 3. Let's call that `C++` library function in `Rust`
+- [`std::ffi`](https://doc.rust-lang.org/stable/std/ffi/index.html): 
 
-Before calling `C++` function, we need to solve a couples of problems below:
+    In particular, the `C-Style String` is the standard `C` string when dealing with `C/C++ FFI`.
+    `C-Style String` just an `array of char (char[])`, but the string is nul-terminated which means
+    they have a `\0` character at the end of the string. 
 
-</br>
+    The usual form is been using as a pointer:
 
-- How `Rust` transfers data type between `Rust` and `C/C++`?
+    ```c++
+    // const char[] pointer
+    const char* ptr;
 
-    There are two modules to handle that:
-
-    - [`std::os:raw`](https://doc.rust-lang.org/stable/std/os/raw/index.html`): Platform-specific types, as defined by C.
-        
-        | Rust type     | C/C++ type |
-        |-------------- |----------------------------
-        | `c_char`      | Equivalent to C's `char` type.
-        | `c_double`    | Equivalent to C's `double` type.
-        | `c_float`     | Equivalent to C's `float` type.
-        | `c_int`       | Equivalent to C's `signed int (int)` type.
-        | `c_long`      | Equivalent to C's `signed long (long)` type.
-        | `c_longlong`  | Equivalent to C's `signed long long (long long)` type.
-        | `c_schar`     | Equivalent to C's `signed char` type.
-        | `c_short`     | Equivalent to C's `signed short (short)` type.
-        | `c_uchar`     | Equivalent to C's `unsigned char` type.
-        | `c_uint`      | Equivalent to C's `unsigned int` type.
-        | `c_ulong`     | Equivalent to C's `unsigned long` type.
-        | `c_ulonglong` | Equivalent to C's `unsigned long long` type.
-        | `c_ushort`    | Equivalent to C's `unsigned short` type.
-
-        </br>
-
-    - [`std::ffi`](https://doc.rust-lang.org/stable/std/ffi/index.html): 
-
-        In particular, the `C-Style String` is the standard `C` string when dealing with `C/C++ FFI`.
-        `C-Style String` just an `array of char (char[])`, but the string is nul-terminated which means
-        they have a `\0` character at the end of the string. 
-
-        The usual form is been using as a pointer:
-
-        ```c++
-        // const char[] pointer
-        const char* ptr;
-
-        // char[] pointer
-        char* ptr;
-        ```
-
-        Below is usual case in `C/C++` function to
-        accept a `C-Style String` or return a `C-Style String`:
-
-        ```c++
-        // `*const c_char` is rust type which equivalent to `const char*` in C/C++
-        extern "C" { fn c_function_return_c_style_string() -> *const c_char; }
-
-        // `*const c_char` is rust type which equivalent to `const char*` in C/C++
-        extern "C" { fn c_function_accept_c_style_string_parameter(s: *const c_char); }
-        ```
-
-        For dealing with that `C-Style string`, `std::ffi` module introduces 2 extra data types:
-
-        | Rust type     | Use case
-        |-------------- |------------------------------------------
-        | `CString`     | Pass `Rust String` as `C-Style String`
-        | `CStr`        | Get back the `Rust String` by the `C-Style String`
-
-        </br>
-
-        So here is the use case sample:
-
-        - Get back the `Rust String` by the `C-Style String`:
-
-            As `c_function_return_c_style_string()` return `const char*` which means it
-            just a raw pointer NOT guarantees still valid, that's why you need to wrap in
-            `unsafe` block!
-
-            The methods below dont' own the `C heap allocated` string which means you can
-            use that string without copying or allocating:
-            
-            - `CStr::from_ptr().to_str()`
-            - `CStr::from_ptr().to_string_lossy()` 
-            - `CStr::from_ptr().into_c_string()` 
-
-            </br>
-
-            But if you're responsible for destroying that `C heap-allocated` string, then 
-            you should own it and drop it after leaving the scope!
-
-            </br>
-
-
-            ```rust
-            unsafe {
-                let rust_string: String = CStr::from_ptr(c_function_return_c_style_string())
-                    .to_string_lossy()
-                    .into_owned();
-            }
-            ```
-
-            </br>
-
-        - Pass `Rust String` as `C-Style String`
-
-            ```rust
-            let c_string = CString::new("Hello, world!").unwrap();
-            unsafe {
-                c_function_accept_c_style_string_parameter(c_string.as_ptr());
-            }
-            ```
-
-            </br>
-
-- How to generate the `extern` block from a `C/C++` header file?
-
-</br>
-
-- How `cargo build` know where to link the `C++ dynamic library`?
-
-    Placing a file named `build.rs` in the root of a package will cause `Cargo` to compile that script and execute it just **before** building the package. That's the right place to let `rustc` to know where to link the `C++ dynamic library`:
-
-    ```rust
+    // char[] pointer
+    char* ptr;
     ```
 
-</br>
+    Below is usual case in `C/C++` function to
+    accept a `C-Style String` or return a `C-Style String`:
 
-Rust guarantees that the layout of a struct is compatible with the platform's representation in C only if the #[repr(C)] attribute is applied to it. #[repr(C, packed)] can be used to lay out struct members without padding. #[repr(C)] can also be applied to an enum.
-Let's figure out and solve them one by one:)
+    ```c++
+    // `*const c_char` is rust type which equivalent to `const char*` in C/C++
+    extern "C" { fn c_function_return_c_style_string() -> *const c_char; }
 
-- How `Rust` knows about the user-defined type in `C++` (like: `struct`, `class`, `enum`, etc.)?
+    // `*const c_char` is rust type which equivalent to `const char*` in C/C++
+    extern "C" { fn c_function_accept_c_style_string_parameter(s: *const c_char); }
+    ```
 
-https://doc.rust-lang.org/nomicon/ffi.html
-https://docs.rs/cmake/0.1.45/cmake/
+    For dealing with that `C-Style string`, `std::ffi` module introduces 2 extra data types:
 
-</br>
+    | Rust type     | Use case
+    |-------------- |------------------------------------------
+    | `CString`     | Pass `Rust String` as `C-Style String`
+    | `CStr`        | Get back the `Rust String` by the `C-Style String`
 
-- How `build.rs` and `bindgen` can help us and make it easier
+    </br>
+
+    So here is the use case sample:
+
+    - Get back the `Rust String` by the `C-Style String`:
+
+        As `c_function_return_c_style_string()` return `const char*` which means it
+        just a raw pointer NOT guarantees still valid, that's why you need to wrap in
+        `unsafe` block!
+
+        The methods below dont' own the `C heap allocated` string which means you can
+        use that string without copying or allocating:
+        
+        - `CStr::from_ptr().to_str()`
+        - `CStr::from_ptr().to_string_lossy()` 
+        - `CStr::from_ptr().into_c_string()` 
+
+        </br>
+
+        But if you're responsible for destroying that `C heap-allocated` string, then 
+        you should own it and drop it after leaving the scope!
+
+        </br>
 
 
+        ```rust
+        unsafe {
+            let rust_string: String = CStr::from_ptr(c_function_return_c_style_string())
+                .to_string_lossy()
+                .into_owned();
+        }
+        ```
 
-https://doc.rust-lang.org/cargo/reference/build-scripts.html
+        </br>
+
+    - Pass `Rust String` as `C-Style String`
+
+        ```rust
+        let c_string = CString::new("Hello, world!").unwrap();
+        unsafe {
+            c_function_accept_c_style_string_parameter(c_string.as_ptr());
+        }
+        ```
+
+        </br>
+
+#### 3.4 How to generate the `extern` block from a `C/C++` header file?
 
 ```bash
-# bindgen [FLAGS] [OPTIONS] <header> -- <clang-args>...
+# Install `bindgen`:
+cargo install bindgen
 
-bindgen --enable-cxx-namespaces \
+#
+# bindgen [FLAGS] [OPTIONS] <header> -- <clang-args>...
+#
+# --disable-header-comment: Not include bindgen's version.
+# --enable-cxx-namespaces: Enable support for C++ namespaces.
+# --ignore-functions: Ignore functions, good for the case you only care about the `struct`.
+# --no-derive-copy: No `#[derive(Copy)]` needed.
+# --no-derive-debug: No `#[derive(Debug)]` needed.
+# --no-doc-comments: No doc comment needed.
+# --no-include-path-detection: Do not try to detect default include paths
+# --no-layout-tests: No layout tests for any type.
+#
+# `--` Follow by all `clang_arg`:
+# `-x c++`: Indictes that's the C++ if the header file not end with `.hpp`
+# `-std=c++17`: The language standard version
+# `-stdlib=libc++`: C++ standard library to use
+#
+bindgen \
+    --disable-header-comment \
+    --enable-cxx-namespaces \
+    --no-derive-copy \
+    --no-derive-debug \
+    --no-doc-comments \
+    --no-include-path-detection \
     --no-layout-tests \
+    --output src/manual_bindings.rs \
     cpp/src/dynamic-lib/lib.h \
     -- -x c++ \
     -std=c++17 \
-    -stdlib=libc++ \
-> ~/temp/temp_bindgen.rs
+    -stdlib=libc++
 ```
 
 For `macOS`, you might see the error below:
 
 ```bash
-fatal error: 'string' file not found
+fatal error: 'XXXX' file not found
 ```
 
 Then try to add the `-I` `clang` flag explicitly like below:
 
 ```bash
-bindgen --enable-cxx-namespaces \
+bindgen \
+    --disable-header-comment \
+    --enable-cxx-namespaces \
+    --no-derive-copy \
+    --no-derive-debug \
+    --no-doc-comments \
+    --no-include-path-detection \
     --no-layout-tests \
+    --output src/manual_bindings.rs \
     cpp/src/dynamic-lib/lib.h \
     -- -x c++ \
     -I/Library/Developer/CommandLineTools/usr/include/c++/v1 \
     -std=c++17 \
-    -stdlib=libc++ \
-> ~/temp/temp_bindgen.rs
+    -stdlib=libc++
+```
+</br>
+
+#### 3.5 How `cargo build` knows where to link the `C++ dynamic library`?
+
+That's what exactly the `build script` does.
+
+Placing a file named `build.rs` in the root of a package will cause `Cargo` to compile that script and execute it just **before** building the package. That's the right place to let `rustc` to know where to link the `C++ dynamic library`:
+
+```rust
+// FFI custom build script.
+fn main() {
+    //
+    // The `rustc-link-lib` instruction tells `Cargo` to link the 
+    // given library using the compiler's `-l` flag. This is typically
+    // used to link a native library using FFI.
+    //
+    // If you've already add a `#[link(name = "demo"]` in the `extern`
+    // block, then you don't need to provide this.
+    //
+    println!("cargo:rustc-link-lib=dylib=demo");
+
+    //
+    // The `rustc-link-search` instruction tells Cargo to pass the `-L` 
+    // flag to the compiler to add a directory to the library search path.
+    //
+    // The optional `KIND` may be one of the values below:
+    //
+    // - `dependency`: Only search for transitive dependencies in this directory.
+    // - `crate`: Only search for this crate's direct dependencies in this directory.
+    // - `native`: Only search for native libraries in this directory.
+    // - `framework`: Only search for macOS frameworks in this directory.
+    // - `all`: Search for all library kinds in this directory. This is the default 
+    //          if KIND is not specified.
+    //
+    println!("cargo:rustc-link-search=native=cpp/build");
+}
 ```
 
-- Why we need to use the `#[no_mangle]` 
+</br>
 
-## Let's generate a `Rust` library
+## 4. Let's call `C++` function in `Rust`
 
-## Let's call that `Rust` library function in `C++`
+#### 4.1 Use manual `FFI` bindings
+
+- Add the particular features to `Cargo.toml`:
+
+    ```rust
+    [features]
+    default = []
+    enable-manual-bindings = []
+    ```
+
+    `enable-manual-bindings` uses for compiling `build.rs` with the particular condition.
+
+    </br>
+
+- Generate [`src/manual_bindings.rs`](https://github.com/wisonye/rust-ffi-demo/blob/master/src/manual_bindings.rs) by running the command below:
+
+    ```bash
+    bindgen \
+        --disable-header-comment \
+        --enable-cxx-namespaces \
+        --no-derive-debug \
+        --no-derive-copy \
+        --no-doc-comments \
+        --no-include-path-detection \
+        --no-layout-tests \
+        --output src/manual_bindings.rs \
+        cpp/src/dynamic-lib/lib.h \
+        -- -x c++ \
+        -std=c++17 \
+        -stdlib=libc++
+    ```
+
+    </br>
+
+
+- [`src/bin/manual_ffi_binding_demo.rs`](https://github.com/wisonye/rust-ffi-demo/blob/master/src/bin/manual_ffi_binding_demo.rs) includes all the FFI calling samples.
+
+</br>
+
+- Create [`build.rs`](https://github.com/wisonye/rust-ffi-demo/blob/master/build.rs) with the following content:
+
+    ```rust
+    // FFI custom build script.
+    fn main() {
+        //
+        // Link to `libdemo` dynamic library file
+        //
+        println!("cargo:rustc-link-lib=dylib=demo");
+    
+        //
+        // Let `Cargo` to pass the `-L` flag to the compiler to add
+        // the searching directory for the`native` library file
+        //
+        println!("cargo:rustc-link-search=native=cpp/build");
+    }
+    ```
+
+    This allows `Cargo` to know where to link the `C++ dynamic library` file.
+
+</br>
+
+- Build and run the demo
+    
+    ```bash
+    cargo clean && cargo build \
+        --bin manual_ffi_binding_demo \
+        --features "enable-manual-bindings"
+    
+    LD_LIBRARY_PATH=./cpp/build/ ./target/debug/manual_ffi_binding_demo
+    ```
+
+    You should see demo output like below:
+
+    ![manual_ffi_binding_demo.png](./images/manual_ffi_binding_demo.png)
+
+</br>
+
+#### 4.2 Use `bindgen` automatic `FFI` bindings
+
+
