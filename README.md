@@ -548,7 +548,7 @@ fn main() {
 
     </br>
 
-- Generate [`src/manual_bindings.rs`](https://github.com/wisonye/rust-ffi-demo/blob/master/src/manual_bindings.rs) by running the command below:
+- Generate [`src/manual_bindings.rs`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi/rust/src/manual_bindings.rs) by running the command below:
 
     ```bash
     bindgen \
@@ -699,7 +699,7 @@ will be trouble or inconvenience. That's how `bindgen` automatic `FFI` bindings 
 
     </br>
 
-- Replace the following content to the `build.rs`:
+- Replace the following content to the [`build.rs`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi/rust/build.rs):
 
     ```rust
     // FFI custom build script.
