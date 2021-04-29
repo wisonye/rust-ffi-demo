@@ -2,7 +2,7 @@
 
 [1. What is `ABI` and `FFI`?](#1-what-is-abi-and-ffi)</br>
 
-[2. Let's build a `C++` library for this tutorial](#2-lets-build-a-c-library-for-this-tutorial)</br>
+[2. Let's build a `C++ Dynamic library` for this tutorial](#2-lets-build-a-c-dynamic-library-for-this-tutorial)</br>
 [2.1 What will export via the `C++ Dynamic Library`](#21-what-will-export-via-the-c-dynamic-library)</br>
 [2.2 Install `C++` and `cmake` building tools](#22-install-c-and-cmake-building-tools)</br>
 [2.3 Use `cmake` to compile a dynamic library](#23-use-cmake-to-compile-a-dynamic-library)</br>
@@ -19,6 +19,13 @@
 [4.1 Use manual `FFI` bindings](#41-use-manual-ffi-bindings)</br>
 [4.2 Use `bindgen` automatic `FFI` bindings](#42-use-bindgen-automatic-ffi-bindings)</br>
 
+[5. Let's build a `Rust Dynamic library`](#5-lets-build-a-rust-dynmaic-library)</br>
+[5.1 What will export via the `C++ Rust Library`](#51-what-will-export-via-the-rust-dynamic-library)</br>
+[5.2 How to inspect the library's dynamic symbol table](#52-how-to-inspect-the-librarys-dynamic-symbol-table)</br>
+
+[6. Let's call `Rust` function in `C++`](#6-lets-call-rust-function-in-c)</br>
+
+[7. Let's call `Rust` function in `Node.JS`](#6-lets-call-rust-function-in-nodes)</br>
 
 ## 1. What is `ABI` and `FFI`
 
@@ -44,7 +51,7 @@
 
 </br>
 
-## 2. Let's build a `C++` library for this tutorial
+## 2. Let's build a `C++ Dynamic library` for this tutorial
 
 #### 2.1 What will export via the `C++ Dynamic Library`:
 
@@ -135,7 +142,7 @@ Because the `std::string` actually is a `class` (like a `vector<char>` or `vecto
 #### 2.3 Use `cmake` to compile a dynamic library
 
 ```bash
-cd cpp && rm -rf build && mkdir build && cd build
+cd ffi-dynamic-lib/cpp/ && rm -rf build && mkdir build && cd build
 cmake ../ && make
 ```
 
@@ -436,6 +443,8 @@ cargo install bindgen
 # `-std=c++17`: The language standard version
 # `-stdlib=libc++`: C++ standard library to use
 #
+cd calling-ffi/rust
+
 bindgen \
     --disable-header-comment \
     --enable-cxx-namespaces \
@@ -445,7 +454,7 @@ bindgen \
     --no-include-path-detection \
     --no-layout-tests \
     --output src/manual_bindings.rs \
-    cpp/src/dynamic-lib/lib.h \
+    ../../ffi-dynamic-lib/cpp/src/dynamic-lib/lib.h \
     -- -x c++ \
     -std=c++17 \
     -stdlib=libc++
@@ -460,6 +469,8 @@ fatal error: 'XXXX' file not found
 Then try to add the `-I` `clang` flag explicitly like below:
 
 ```bash
+cd calling-ffi/rust
+
 bindgen \
     --disable-header-comment \
     --enable-cxx-namespaces \
@@ -469,7 +480,7 @@ bindgen \
     --no-include-path-detection \
     --no-layout-tests \
     --output src/manual_bindings.rs \
-    cpp/src/dynamic-lib/lib.h \
+    ../../ffi-dynamic-lib/cpp/src/dynamic-lib/lib.h \
     -- -x c++ \
     -I/Library/Developer/CommandLineTools/usr/include/c++/v1 \
     -std=c++17 \
@@ -509,7 +520,7 @@ fn main() {
     // - `all`: Search for all library kinds in this directory. This is the default 
     //          if KIND is not specified.
     //
-    println!("cargo:rustc-link-search=native=cpp/build");
+    println!("cargo:rustc-link-search=native=../../ffi-dynmaic-lib/cpp/build");
 }
 ```
 
@@ -518,6 +529,12 @@ fn main() {
 ## 4. Let's call `C++` function in `Rust`
 
 #### 4.1 Use manual `FFI` bindings
+
+</br>
+
+**Make sure `cd calling-ffi/rust` before doing the following steps!!!**
+
+</br>
 
 - Add the particular features to `Cargo.toml`:
 
@@ -543,7 +560,7 @@ fn main() {
         --no-include-path-detection \
         --no-layout-tests \
         --output src/manual_bindings.rs \
-        cpp/src/dynamic-lib/lib.h \
+        ../../ffi-dynamic-lib/cpp/src/dynamic-lib/lib.h \
         -- -x c++ \
         -std=c++17 \
         -stdlib=libc++
@@ -599,11 +616,11 @@ fn main() {
     </br>
 
 
-- [`src/bin/manual_ffi_binding_demo.rs`](https://github.com/wisonye/rust-ffi-demo/blob/master/src/bin/manual_ffi_binding_demo.rs) includes all the FFI calling samples.
+- [`src/bin/manual_ffi_binding_demo.rs`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi/rust/src/bin/manual_ffi_binding_demo.rs) includes all the FFI calling samples.
 
 </br>
 
-- Create [`build.rs`](https://github.com/wisonye/rust-ffi-demo/blob/master/build.rs) with the following content:
+- Create [`build.rs`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi/rust/build.rs) with the following content:
 
     ```rust
     // FFI custom build script.
@@ -617,7 +634,7 @@ fn main() {
         // Let `Cargo` to pass the `-L` flag to the compiler to add
         // the searching directory for the`native` library file
         //
-        println!("cargo:rustc-link-search=native=cpp/build");
+        println!("cargo:rustc-link-search=native=../../ffi-dynamic-lib/cpp/build");
     }
     ```
 
@@ -633,7 +650,7 @@ fn main() {
         --features "enable-manual-bindings" \
         --release
     
-    LD_LIBRARY_PATH=./cpp/build/ ./target/release/manual_ffi_binding_demo
+    LD_LIBRARY_PATH=../../ffi-dynamic-lib/cpp/build/ ./target/release/manual_ffi_binding_demo
     ```
 
     You should see demo output like below:
@@ -667,6 +684,11 @@ will be trouble or inconvenience. That's how `bindgen` automatic `FFI` bindings 
 
 #### 4.2 Use `bindgen` automatic `FFI` bindings
 
+</br>
+
+**Make sure `cd calling-ffi/rust` before doing the following steps!!!**
+
+</br>
 
 - Add the build dependencies to `Cargo.toml`:
 
@@ -701,13 +723,13 @@ will be trouble or inconvenience. That's how `bindgen` automatic `FFI` bindings 
         // Let `Cargo` to pass the `-L` flag to the compiler to add
         // the searching directory for the`native` library file
         //
-        println!("cargo:rustc-link-search=native=cpp/build");
+        println!("cargo:rustc-link-search=native=../../ffi-dynamic-lib/cpp/build");
     
 
         #[cfg(not(feature = "enable-manual-bindings"))]
         {
             // Tell cargo to invalidate the built crate whenever the wrapper changes
-            println!("cargo:rerun-if-changed=cpp/src/dynamic-lib/lib.h");
+            println!("cargo:rerun-if-changed=../../ffi-dynamic-lib/cpp/src/dynamic-lib/lib.h");
     
             //
             // Write the bindings to the $OUT_DIR/bindings.rs file.
@@ -723,7 +745,7 @@ will be trouble or inconvenience. That's how `bindgen` automatic `FFI` bindings 
             // you build up options for the resulting bindings.
             let bindings = bindgen::Builder::default()
                 // The input header we would like to generate bindings for.
-                .header("cpp/src/dynamic-lib/lib.h")
+                .header("../../ffi-dynamic-lib/cpp/src/dynamic-lib/lib.h")
                 // Not generate the layout test code
                 .layout_tests(false)
                 // Not derive `Debug, Clone, Copy, Default` trait by default
@@ -754,7 +776,7 @@ will be trouble or inconvenience. That's how `bindgen` automatic `FFI` bindings 
 
     </br>
 
-- Add the following content to `src/main.rs`:
+- Add the following content to [`src/main.rs`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi/rust/src/main.rs):
 
     ```rust
     #![allow(non_upper_case_globals)]
@@ -772,7 +794,7 @@ will be trouble or inconvenience. That's how `bindgen` automatic `FFI` bindings 
         println!("[ Auto FFI bindgins call demo ]\n");
     
         //
-        // Ignore the some source code from `src/bin/manual_ffi_binding_demo.rs` here
+        // Ignore the same source code from `src/bin/manual_ffi_binding_demo.rs` here
         //
     
     }
@@ -795,7 +817,7 @@ will be trouble or inconvenience. That's how `bindgen` automatic `FFI` bindings 
     ```bash
     cargo clean && cargo build --release
 
-    LD_LIBRARY_PATH=./cpp/build/ ./target/release/ffi-demo
+    LD_LIBRARY_PATH=../../ffi-dynamic-lib/cpp/build/ ./target/release/ffi-demo
     ```
     
     </br>
@@ -808,3 +830,37 @@ than before.
 </br>
 
 
+## 5. Let's build a `Rust Dynamic library`
+
+#### 5.1 What will export via the `Rust Dynamic Library`:
+
+```rust
+
+```
+
+#### 5.4 How to inspect the library's dynamic symbol table
+
+- Linux
+
+    ```bash
+    objdump -T libdemo.so | grep "hello\|person\|Person\|Location"
+
+
+    # Or
+    nm -f bsd libdemo.so | grep "hello\|person\|Person\|Location"
+    ```
+
+    </br>
+
+- MacOS
+
+    ```bash
+    objdump -t libdemo.dylib | grep "hello\|person\|Person\|Location"
+
+    # Or
+    nm -f bsd libdemo.dylib | grep "hello\|person\|Person\|Location"
+
+    # Also, you can print the shared libraries used for linked Mach-O files:
+    ```
+
+</br>

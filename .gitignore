@@ -1,2 +1,2 @@
-/target
-/cpp/build
+calling-ffi/rust/target
+ffi-dynamic-lib/cpp/build/

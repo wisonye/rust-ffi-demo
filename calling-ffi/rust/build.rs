@@ -33,12 +33,12 @@ fn main() {
     // - `all`: Search for all library kinds in this directory. This is the default
     //          if KIND is not specified.
     //
-    println!("cargo:rustc-link-search=native=cpp/build");
+    println!("cargo:rustc-link-search=native=../../ffi-dynamic-lib/cpp/build");
 
     #[cfg(not(feature = "enable-manual-bindings"))]
     {
         // Tell cargo to invalidate the built crate whenever the wrapper changes
-        println!("cargo:rerun-if-changed=cpp/src/dynamic-lib/lib.h");
+        println!("cargo:rerun-if-changed=../../ffi-dynamic-lib/cpp/src/dynamic-lib/lib.h");
 
         //
         // Write the bindings to the $OUT_DIR/bindings.rs file.
@@ -54,7 +54,7 @@ fn main() {
         // you build up options for the resulting bindings.
         let bindings = bindgen::Builder::default()
             // The input header we would like to generate bindings for.
-            .header("cpp/src/dynamic-lib/lib.h")
+            .header("../../ffi-dynamic-lib/cpp/src/dynamic-lib/lib.h")
             // Not generate the layout test code
             .layout_tests(false)
             // Not derive `Debug, Clone, Copy, Default` trait by default
