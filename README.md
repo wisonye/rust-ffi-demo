@@ -11,7 +11,7 @@
 [3. How Rust deal with `FFI`?](#3-how-rust-deal-with-ffi)</br>
 [3.1 `#[link]`](#31-link)</br>
 [3.2 `extern` block](#32-extern)</br>
-[3.3 How to transfers data type between `Rust` and `C/C++`?](#33-how-rust-transfers-data-type-between-rust-and-cc)</br>
+[3.3 How to transfers data type between `Rust` and `C/C++`?](#33-how-to-transfers-data-type-between-rust-and-cc)</br>
 [3.4 How to generate the `extern` block from a `C/C++` header file?](#34-how-to-generate-the-extern-block-from-a-cc-header-file)</br>
 [3.5 How `cargo build` knows where to link the `C++ dynamic library`?](#35-how-cargo-build-knows-where-to-link-the-c-dynamic-library)</br>
 
@@ -316,7 +316,7 @@ The `#[link_name]` helps link to the correct external function which can be gene
 
 </br>
 
-#### 3.3 How `Rust` transfers data type between `Rust` and `C/C++`?
+#### 3.3 How to transfers data type between `Rust` and `C/C++`?
 
 There are two modules to handle that:
 
@@ -829,14 +829,207 @@ than before.
 
 </br>
 
+</br>
+
 
 ## 5. Let's build a `Rust Dynamic library`
 
+</br>
+
+**Make sure `cd ffi-dynamic-lib/rust` before doing the following steps!!!**
+
+</br>
+
 #### 5.1 What will export via the `Rust Dynamic Library`:
 
-```rust
+There are several parts inside this library:
 
+###### 5.1.1 The `struct` definition:
+
+```rust
+///
+#[derive(Debug)]
+pub enum Gender {
+    Female,
+    Male,
+    Unknown,
+}
+
+///
+#[derive(Debug)]
+pub struct Location {
+    street_address: String,
+    city: String,
+    state: String,
+    country: String,
+}
+
+///
+pub struct Person {
+    first_name: String,
+    last_name: String,
+    gender: Gender,
+    age: u8,
+    location: Location,
+}
 ```
+
+</br>
+
+###### 5.1.2 The `extern` functions export to the outside world:
+
+Because `Rust` has the `ownership and borrowing` concept, all rust code
+under `borrow checker` control, actually should say under `borrow checker`'s 
+protection.
+
+But the `FFI` caller doesn't have that concept. If we pass the instance to
+the outside world, then the `borrow checker` can't guarantee and protect
+that instance memory.
+
+The easy way is that allocates the instance on the heap, and then return 
+its raw pointer.
+
+As we hand over the instance raw pointer to the `FFI` caller, that will lose
+control of the memory, that's why should have the `release` extern function
+to return the control of memory we given out to make sure release the instance
+memory correctly!!!
+
+</br>
+
+- Create new `Person` instance on the heap and return the raw pointer
+
+    ```rust
+    #[no_mangle]
+    pub extern "C" fn create_new_person(
+        first_name: *const c_char,
+        last_name: *const c_char,
+        gender: c_uchar,
+        age: c_uchar,
+        street_address: *const c_char,
+        city: *const c_char,
+        state: *const c_char,
+        country: *const c_char,
+    ) -> *mut Person {
+        let temp_gender = match gender {
+            0 => Gender::Female,
+            1 => Gender::Male,
+            _ => Gender::Unknown,
+        };
+    
+        unsafe {
+            let new_person = Person {
+                first_name: CStr::from_ptr(first_name).to_string_lossy().into_owned(),
+                last_name: CStr::from_ptr(last_name).to_string_lossy().into_owned(),
+                gender: temp_gender,
+                age: age as u8,
+                location: Location {
+                    street_address: CStr::from_ptr(street_address)
+                        .to_string_lossy()
+                        .into_owned(),
+                    city: CStr::from_ptr(city).to_string_lossy().into_owned(),
+                    state: CStr::from_ptr(state).to_string_lossy().into_owned(),
+                    country: CStr::from_ptr(country).to_string_lossy().into_owned(),
+                },
+            };
+    
+            Box::into_raw(Box::new(new_person))
+        }
+    }
+    ```
+    A couple of things happen here:
+
+    - `*const c_char`:
+
+        The `C-Style String` (`const char*`) needs to be converted into `String`, 
+        that why uses `*const std::os::raw::c_char` (immutable pointer to `c_char`).
+
+        </br>
+
+    - `#[no_mangle]`:
+
+        The `no_mangle` attribute instructs the `rustc` compiler to not alter the
+        function name when it is inserted to a binary file. This makes it easier
+        for FFI users to call it, as the name is kept as "human-readable".
+
+    - `extern "C"`:
+
+        `extern "C"` defines that this function should be callable outside Rust
+        codebases, and use the "C ABI" calling convention.
+
+            
+    - `Box::into_raw(Box::new(new_person))`:
+
+        `Box::new()` allocates the instance on the heap, then it can leave as long as when
+        outside this function.
+
+
+    </br>
+
+- Release the `Person` instance raw pointer correctly
+
+    Why need this? That's because the FFI caller doesn't know how to release
+    the `Box<Person>` instance correctly, so the rust library should take the
+    responsibility for doing that!!!
+- The `Drop` trait:
+    
+    This can prove that `Person` instance (includes `Person.location`) has been destroyed correctly.
+
+    ```rust
+    ///
+    /// Customized drop trait
+    ///
+    impl Drop for Person {
+        ///
+        fn drop(&mut self) {
+            println!(
+                " [ Person instance get destroyed ] - first name: {}, last name: {}",
+                &self.first_name, &self.last_name
+            );
+        }
+    }
+    
+    ///
+    /// Customized drop trait
+    ///
+    impl Drop for Location {
+        ///
+        fn drop(&mut self) {
+            println!(
+                " [ Person location instance get destroyed ] - street address: {}, city: {}",
+                &self.street_address, &self.city
+            );
+        }
+    }
+    ```
+
+    </br>
+
+
+#### 5.2 Add the content below to `Cargo.toml`
+
+```toml
+[lib]
+crate-type = ["cdylib"]
+```
+
+The setting above indicates that a dynamic system library will be produced. This is 
+used when compiling a dynamic library to be loaded from another language. The output 
+file extension will be different for the particular OS:
+
+- Linux: `*.so`
+- MacOS: `*.dylib`
+- Windows: `*.dll`
+
+</br>
+
+
+#### 5.3 Build the library
+
+```bash
+cargo clean && cargo build --release
+```
+
+</br>
 
 #### 5.2 How to inspect the library's dynamic symbol table
 
@@ -862,5 +1055,6 @@ than before.
 
     # Also, you can print the shared libraries used for linked Mach-O files:
     ```
+
 
 </br>
