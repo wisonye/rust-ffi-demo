@@ -17,7 +17,8 @@ void print_helloworld() { cout << "Hello world to FFI:)" << endl; }
 // Customized destructor
 //
 Person::~Person() {
-  cout << "[ Person instance get destroyed ] - first name: " << first_name
+  cout << "[ Person instance get destroyed ] - first name: "
+       << first_name
        << ", last name: " << last_name << endl;
 }
 
@@ -27,12 +28,15 @@ Person::~Person() {
 std::ostream &operator<<(ostream &stream_out, const Person &p) {
   stream_out << "[ Person Info ]\n{"
              << "\n\tFirst name: " << p.first_name
-             << "\n\tLast name: " << p.last_name << "\n\tGender: " << p.sex
-             << "\n\tAge: " << (int)p.age << "\n\tLocation: "
+             << "\n\tLast name: " << p.last_name
+             << "\n\tGender: " << p.gender
+             << "\n\tAge: " << (int)p.age
+             << "\n\tLocation: "
              << "\n\t\tStreet address: " << p.location.street_address
              << "\n\t\tCity: " << p.location.city
              << "\n\t\tcountry: " << p.location.state
-             << "\n\t\tcountry: " << p.location.country << "\n}\n\n";
+             << "\n\t\tcountry: " << p.location.country
+             << "\n}\n\n";
 
   return stream_out;
 }
@@ -43,10 +47,13 @@ std::ostream &operator<<(ostream &stream_out, const Person &p) {
 Person *create_new_person(
     // string first_name,
     // string last_name,
-    const char *first_name, const char *last_name, Gender sex, uint8_t age,
+    const char *first_name, 
+    const char *last_name,
+    Gender gender,
+    uint8_t age,
     Location location) {
   // Allocate on the heap
-  Person *return_person = new Person{first_name, last_name, sex, age, location};
+  Person *return_person = new Person{first_name, last_name, gender, age, location};
   return return_person;
 }
 
@@ -71,8 +78,11 @@ const char *get_person_info(Person *p) {
 
   ostringstream os;
   os << "\n[ Person Info ]\n{"
-     << "\n\tFirst name: " << p->first_name << "\n\tLast name: " << p->last_name
-     << "\n\tGender: " << p->sex << "\n\tAge: " << (int)p->age << "\n\tLocation: "
+     << "\n\tFirst name: " << p->first_name
+     << "\n\tLast name: " << p->last_name
+     << "\n\tGender: " << p->gender
+     << "\n\tAge: " << (int)p->age
+     << "\n\tLocation: "
      << "\n\t\tStreet address: " << p->location.street_address
      << "\n\t\tCity: " << p->location.city
      << "\n\t\tcountry: " << p->location.state

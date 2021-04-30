@@ -88,7 +88,7 @@ struct Person {
     // string last_name;
     const char* first_name;
     const char* last_name;
-    Gender sex;
+    Gender gender;
     unsigned char age;
     Location location;
 
@@ -101,7 +101,7 @@ Person* create_new_person(
         // string last_name, 
         const char* first_name, 
         const char* last_name, 
-        Gender sex,
+        Gender gender,
         unsigned char age,
         Location location);
 
@@ -573,7 +573,7 @@ fn main() {
     pub struct Person {
         pub first_name: *const ::std::os::raw::c_char,
         pub last_name: *const ::std::os::raw::c_char,
-        pub sex: root::Demo::Gender,
+        pub gender: root::Demo::Gender,
         pub age: ::std::os::raw::c_uchar,
         pub location: root::Demo::Location,
     }
@@ -583,7 +583,7 @@ fn main() {
         pub fn create_new_person(
             first_name: *const ::std::os::raw::c_char,
             last_name: *const ::std::os::raw::c_char,
-            sex: root::Demo::Gender,
+            gender: root::Demo::Gender,
             age: ::std::os::raw::c_uchar,
             location: root::Demo::Location,
         ) -> *mut root::Demo::Person;

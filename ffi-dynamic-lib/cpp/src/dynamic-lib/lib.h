@@ -30,7 +30,7 @@ struct Person {
     // string last_name;
     const char* first_name;
     const char* last_name;
-    Gender sex;
+    Gender gender;
     unsigned char age;
     Location location;
 
@@ -43,7 +43,7 @@ Person* create_new_person(
         // string last_name, 
         const char* first_name, 
         const char* last_name, 
-        Gender sex,
+        Gender gender,
         unsigned char age,
         Location location);
 

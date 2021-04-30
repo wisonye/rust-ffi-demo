@@ -23,7 +23,7 @@ pub mod root {
         pub struct Person {
             pub first_name: *const ::std::os::raw::c_char,
             pub last_name: *const ::std::os::raw::c_char,
-            pub sex: root::Demo::Gender,
+            pub gender: root::Demo::Gender,
             pub age: ::std::os::raw::c_uchar,
             pub location: root::Demo::Location,
         }
@@ -42,7 +42,7 @@ pub mod root {
             pub fn create_new_person(
                 first_name: *const ::std::os::raw::c_char,
                 last_name: *const ::std::os::raw::c_char,
-                sex: root::Demo::Gender,
+                gender: root::Demo::Gender,
                 age: ::std::os::raw::c_uchar,
                 location: root::Demo::Location,
             ) -> *mut root::Demo::Person;
