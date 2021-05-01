@@ -1144,3 +1144,156 @@ cargo clean && cargo build --release
 
 
 </br>
+
+## 6. Let's call `Rust` function in `C++`
+
+</br>
+
+**Make sure `cd calling-ffi/cpp` before doing the following steps!!!**
+
+</br>
+
+#### 6.1 Create [`calling-ffi/cpp/src/ffi.h`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi/cpp/src/ffi.h) with the following content:
+
+```c++
+#pragma once
+
+//
+// Declare extern FFI functions from Rust dynamic library
+//
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct person person_t;
+
+person_t *create_new_person(const char *first_name,
+    const char *last_name,
+    unsigned char gender, unsigned char age,
+    const char *street_address,
+    const char *city, const char *state,
+    const char *country);
+
+void release_person_pointer(person_t *);
+
+void print_person_info(person_t *);
+
+char *get_person_info(person_t *);
+
+void release_get_person_info(char *);
+
+#ifdef __cplusplus
+}
+#endif
+```
+
+</br>
+
+#### 6.2 Create [`calling-ffi/cpp/src/main.cpp`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi/cpp/src/main.cpp) with the following content:
+
+```c++
+#include "ffi.h"
+#include <iostream>
+
+using namespace std;
+
+int main() {
+
+
+    //
+    // Call FFI functions
+    //
+
+    const char *first_name = "Wison";
+    const char *last_name = "Ye";
+    const char *street_address = "Wison's street_address here";
+    const char *city = "Wison's city here";
+    const char *state = "Wison's state here";
+    const char *country = "Wison's country here";
+    person_t *wison = create_new_person(
+        first_name,
+        last_name,
+        1,
+        88,
+        street_address,
+        city,
+        state,
+        country
+    );
+
+    print_person_info(wison);
+
+    char *person_info_ptr = get_person_info(wison);
+    cout << "\n>>> C++ caller print >>>\n" << person_info_ptr << "\n\n";
+    release_get_person_info(person_info_ptr);
+    
+    release_person_pointer(wison);
+    
+    return 0;
+}
+```
+</br>
+
+
+#### 6.3 Create [`calling-ffi/cpp/CMakeLists.txt`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi/cpp/CMakeLists.txt) with the following content:
+
+```bash
+cmake_minimum_required(VERSION "3.17.2")
+
+set(CMAKE_HOST_SYSTEM_PROCESSOR X86_64)
+
+set(CMAKE_C_COMPILER clang)
+set(CMAKE_CXX_COMPILER clang++ -stdlib=libc++)
+
+# Same with adding the compile flag `-std=c++17`
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED on)
+
+# Build type
+set(CMAKE_BUILD_TYPE Release)
+
+
+#-------------------------------------------------------------------------------------
+# Project settings
+#-------------------------------------------------------------------------------------
+
+# Define project name. After this, we can use "${PROJECT_NAME}" var to 
+# dereference/re-use the project name as a String value.
+project("calling-rust-in-cpp")
+
+# Add directories in which the linker will look for libraries.
+# This setting HAS TO define BEFORE `add_executable`!!!
+link_directories(../../ffi-dynamic-lib/rust/target/release)
+
+# Compile and build the executable
+add_executable("${PROJECT_NAME}" "src/main.cpp")
+
+# Link the particular library to the executable we build.
+# It asks the linker to use `-llibrust` option which means
+# link to the particular library file below for different OS:
+#
+# Linux   - librust.so
+# MacOS   - librust.dylib
+# Windows - librust.dll
+target_link_libraries("${PROJECT_NAME}" "rust")
+```
+
+</br>
+
+
+#### 6.4 Build and run
+
+```bash
+rm -rf build && mkdir build && cd build
+cmake ../ && make
+
+./calling-rust-in-cpp
+```
+
+You should see the output like below:
+
+![calling-ffi-cpp-demo.png](./images/calling-ffi-cpp-demo.png)
+
+</br>
+
+

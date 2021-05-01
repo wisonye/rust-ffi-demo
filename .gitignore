@@ -1,4 +1,5 @@
 calling-ffi/rust/target
+calling-ffi/cpp/build
 ffi-dynamic-lib/cpp/build/
 ffi-dynamic-lib/rust/target
 .DS_Store
