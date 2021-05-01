@@ -130,6 +130,11 @@ pub extern "C" fn create_new_person(
     };
 
     unsafe {
+        let temp_str = CStr::from_ptr(first_name);
+        println!("temp_str: {:#?}", temp_str.to_string_lossy().into_owned());
+    };
+
+    unsafe {
         let new_person = Person {
             first_name: CStr::from_ptr(first_name).to_string_lossy().into_owned(),
             last_name: CStr::from_ptr(last_name).to_string_lossy().into_owned(),
@@ -145,29 +150,65 @@ pub extern "C" fn create_new_person(
             },
         };
 
+        println!("first_name: {}", &new_person.first_name);
+
         Box::into_raw(Box::new(new_person))
     }
 }
 
+///
+/// Release the raw pointer which returned from `create_new_person()`
+/// and convert it back into `Box<Person>`, then the box destructor
+/// will cleanup the `Person` instance correctly.
+///
+#[no_mangle]
 pub extern "C" fn release_person_pointer(ptr: *mut Person) {
     if ptr.is_null() {
         return;
     }
 
-    //
-    // Convert the `*mut Person` pointer back to `Box<Person>`
-    // and then comsume it which means it will drop the the
-    // instance of `Box<Person>` when leaving the current
-    // function scope!!!
     unsafe {
         Box::from_raw(ptr);
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     #[test]
-//     fn it_works() {
-//         assert_eq!(2 + 2, 4);
-//     }
-// }
+///
+///
+///
+#[no_mangle]
+pub extern "C" fn print_person_info(ptr: *mut Person) {
+    if ptr.is_null() {
+        return;
+    }
+
+    unsafe {
+        (*ptr).print_info();
+    };
+}
+
+///
+///
+///
+#[no_mangle]
+pub extern "C" fn get_person_info(ptr: *mut Person) -> *mut c_char {
+    if ptr.is_null() {
+        return CString::new("").unwrap().into_raw();
+    }
+
+    unsafe { CString::new((*ptr).get_info()).unwrap().into_raw() }
+}
+
+///
+///
+///
+#[no_mangle]
+pub extern "C" fn release_get_person_info(info_ptr: *mut c_char) {
+    if info_ptr.is_null() {
+        return;
+    }
+
+    unsafe {
+        CString::from_raw(info_ptr);
+    }
+}
+

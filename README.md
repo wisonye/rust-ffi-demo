@@ -951,25 +951,84 @@ memory correctly!!!
         function name when it is inserted to a binary file. This makes it easier
         for FFI users to call it, as the name is kept as "human-readable".
 
+        When inspecting the dynamic library symbol table, you would see something
+        like this `_create_new_person` instead of this `_rust_eh_personality`.
+
+        </br>
+
     - `extern "C"`:
 
         `extern "C"` defines that this function should be callable outside Rust
         codebases, and use the "C ABI" calling convention.
 
+        </br>
             
     - `Box::into_raw(Box::new(new_person))`:
 
-        `Box::new()` allocates the instance on the heap, then it can leave as long as when
-        outside this function.
+        `Box::new()` allocates the instance on the heap, then it can leave as long
+        as needed for the `FFI` caller to use.
+
+        `Box::into_raw()` consumes the `Box<Person>` and return the wrapped raw pointer.
 
 
     </br>
 
 - Release the `Person` instance raw pointer correctly
 
-    Why need this? That's because the FFI caller doesn't know how to release
-    the `Box<Person>` instance correctly, so the rust library should take the
-    responsibility for doing that!!!
+    ```rust
+    pub extern "C" fn release_person_pointer(ptr: *mut Person) {
+        if ptr.is_null() {
+            return;
+        }
+    
+        unsafe {
+            Box::from_raw(ptr);
+        }
+    }
+    ```
+
+    This extern function accepts a raw pointer which returned from 
+    `create_new_person()` and convert it back into `Box<Person>`,
+    then the box destructor will cleanup the `Person` instance correctly.
+
+    </br>
+
+- Release `CString` instance raw pointer correctly
+
+    ```rust
+    #[no_mangle]
+    pub extern "C" fn get_person_info(ptr: *mut Person) -> *mut c_char {
+        if ptr.is_null() {
+            return CString::new("").unwrap().into_raw();
+        }
+    
+        unsafe { CString::new((*ptr).get_info()).unwrap().into_raw() }
+    }
+
+    #[no_mangle]
+    pub extern "C" fn release_get_person_info(info_ptr: *mut c_char) {
+        if info_ptr.is_null() {
+            return;
+        }
+    
+        unsafe {
+            CString::from_raw(info_ptr);
+        }
+    }
+    ```
+
+    Because `Person.get_info()` returns a `String` instance, but the `FFI` 
+    caller can't use it, then we need to convert it into a `CString` instance
+    and call its `into_raw()` to produce a raw pointer which the `FFI` caller
+    can use it as a `char *` string. `CString.into_raw()` consumes the `CString`
+    and transfers ownership of the string to a `FFI(C)` caller.
+
+    In particular, that raw pointer SHOULD NOT be deallocated by using the
+    standard C `free()`. That's why we have the `release_get_person_info()`
+    for doing the release step.
+
+    </br>
+
 - The `Drop` trait:
     
     This can prove that `Person` instance (includes `Person.location`) has been destroyed correctly.
@@ -1001,6 +1060,10 @@ memory correctly!!!
         }
     }
     ```
+
+    </br>
+
+    Here is the [`ffi-dynamic-lib/rust/src/main.rs`](https://github.com/wisonye/rust-ffi-demo/blob/master/ffi-dynamic-lib/rust/src/main.rs).
 
     </br>
 
@@ -1036,11 +1099,11 @@ cargo clean && cargo build --release
 - Linux
 
     ```bash
-    objdump -T libdemo.so | grep "hello\|person\|Person\|Location"
+    objdump -T ./target/release/librust.so | grep "person\|Person\|Location"
 
 
     # Or
-    nm -f bsd libdemo.so | grep "hello\|person\|Person\|Location"
+    nm -f bsd ./target/release/librust.so | grep "person\|Person\|Location"
     ```
 
     </br>
@@ -1048,12 +1111,35 @@ cargo clean && cargo build --release
 - MacOS
 
     ```bash
-    objdump -t libdemo.dylib | grep "hello\|person\|Person\|Location"
+    objdump -t ./target/release/librust.dylib | grep "person\|Person\|Location"
+    # 0000000000001eb0 l     F __TEXT,__text  __ZN51_$LT$rust..Location$u20$as$u20$core..fmt..Debug$GT$3fmt17h33f040e226ce3834E
+    # 000000000002a4c0 l     F __TEXT,__text  __ZN4core5panic8Location6caller17hb3a7d4b2fc73787cE
+    # 000000000002a4d0 l     F __TEXT,__text  __ZN60_$LT$core..panic..Location$u20$as$u20$core..fmt..Display$GT$3fmt17h450055633af24029E
+    # 0000000000001280 g     F __TEXT,__text  _create_new_person
+    # 0000000000001c70 g     F __TEXT,__text  _get_person_info
+    # 0000000000001c00 g     F __TEXT,__text  _print_person_info
+    # 0000000000001e10 g     F __TEXT,__text  _release_get_person_info
+    # 0000000000001bb0 g     F __TEXT,__text  _release_person_pointer
+    # 0000000000022460 g     F __TEXT,__text  _rust_eh_personality
 
     # Or
-    nm -f bsd libdemo.dylib | grep "hello\|person\|Person\|Location"
+    nm -f bsd ./target/release/librust.dylib | grep "person\|Person\|Location"
+    # 000000000002a4c0 t __ZN4core5panic8Location6caller17hb3a7d4b2fc73787cE
+    # 0000000000001eb0 t __ZN51_$LT$rust..Location$u20$as$u20$core..fmt..Debug$GT$3fmt17h33f040e226ce3834E
+    # 000000000002a4d0 t __ZN60_$LT$core..panic..Location$u20$as$u20$core..fmt..Display$GT$3fmt17h450055633af24029E
+    # 0000000000001280 T _create_new_person
+    # 0000000000001c70 T _get_person_info
+    # 0000000000001c00 T _print_person_info
+    # 0000000000001e10 T _release_get_person_info
+    # 0000000000001bb0 T _release_person_pointer
+    # 0000000000022460 T _rust_eh_personality
 
     # Also, you can print the shared libraries used for linked Mach-O files:
+    objdump -macho -dylibs-used ./target/release/librust.dylib
+    # ./target/release/librust.dylib:
+    #         /Users/wison/Rust/rust-ffi-demo/ffi-dynamic-lib/rust/target/release/deps/librust.dylib (compatibility version 0.0.0, current version 0.0.0)
+    #         /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1252.250.1)
+    #         /usr/lib/libresolv.9.dylib (compatibility version 1.0.0, current version 1.0.0)
     ```
 
 
