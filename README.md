@@ -1104,10 +1104,26 @@ cargo clean && cargo build --release
 
     ```bash
     objdump -T ./target/release/librust.so | grep "person\|Person\|Location"
+    # 0000000000026a00 g    DF .text  0000000000000351  Base        rust_eh_personality
+    # 00000000000054f0 g    DF .text  000000000000065f  Base        create_new_person
+    # 0000000000005ba0 g    DF .text  000000000000006e  Base        print_person_info
+    # 0000000000005b50 g    DF .text  0000000000000048  Base        release_person_pointer
+    # 0000000000005c10 g    DF .text  000000000000018c  Base        get_person_info
+    # 0000000000005da0 g    DF .text  0000000000000028  Base        release_get_person_info
 
 
     # Or
     nm -f bsd ./target/release/librust.so | grep "person\|Person\|Location"
+    # 00000000000054f0 T create_new_person
+    # 0000000000049008 d DW.ref.rust_eh_personality
+    # 0000000000005c10 T get_person_info
+    # 0000000000005ba0 T print_person_info
+    # 0000000000005da0 T release_get_person_info
+    # 0000000000005b50 T release_person_pointer
+    # 0000000000026a00 T rust_eh_personality
+    # 0000000000032880 t _ZN4core5panic8Location6caller17h7a7acf437630d90eE
+    # 0000000000005e40 t _ZN51_$LT$rust..Location$u20$as$u20$core..fmt..Debug$GT$3fmt17hd5037e5c9d432ecbE
+    # 0000000000032890 t _ZN60_$LT$core..panic..Location$u20$as$u20$core..fmt..Display$GT$3fmt17hb4680bb747c9c063E
     ```
 
     </br>

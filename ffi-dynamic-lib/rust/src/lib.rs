@@ -130,11 +130,6 @@ pub extern "C" fn create_new_person(
     };
 
     unsafe {
-        let temp_str = CStr::from_ptr(first_name);
-        println!("temp_str: {:#?}", temp_str.to_string_lossy().into_owned());
-    };
-
-    unsafe {
         let new_person = Person {
             first_name: CStr::from_ptr(first_name).to_string_lossy().into_owned(),
             last_name: CStr::from_ptr(last_name).to_string_lossy().into_owned(),
@@ -149,8 +144,6 @@ pub extern "C" fn create_new_person(
                 country: CStr::from_ptr(country).to_string_lossy().into_owned(),
             },
         };
-
-        println!("first_name: {}", &new_person.first_name);
 
         Box::into_raw(Box::new(new_person))
     }
