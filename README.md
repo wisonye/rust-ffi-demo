@@ -659,7 +659,7 @@ fn main() {
 
     You should see demo output like below:
 
-    ![manual_ffi_binding_demo.png](./images/manual_ffi_binding_demo.png)
+    ![manual_ffi_binding_demo-png.png](./images/manual_ffi_binding_demo-png.png)
 
     If you print the symbol table for the release executable, you should be able to 
     notic that it relies on the FFI functions in the `C++ Dynamic Library`:
