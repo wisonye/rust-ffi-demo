@@ -11,7 +11,7 @@
 [3. How Rust deal with `FFI`?](#3-how-rust-deal-with-ffi)</br>
 [3.1 `#[link]`](#31-link)</br>
 [3.2 `extern` block](#32-extern)</br>
-[3.3 How to transfers data type between `Rust` and `C/C++`?](#33-how-rust-transfers-data-type-between-rust-and-cc)</br>
+[3.3 How to transfers data type between `Rust` and `C/C++`?](#33-how-to-transfers-data-type-between-rust-and-cc)</br>
 [3.4 How to generate the `extern` block from a `C/C++` header file?](#34-how-to-generate-the-extern-block-from-a-cc-header-file)</br>
 [3.5 How `cargo build` knows where to link the `C++ dynamic library`?](#35-how-cargo-build-knows-where-to-link-the-c-dynamic-library)</br>
 
@@ -24,6 +24,10 @@
 [5.2 How to inspect the library's dynamic symbol table](#52-how-to-inspect-the-librarys-dynamic-symbol-table)</br>
 
 [6. Let's call `Rust` function in `C++`](#6-lets-call-rust-function-in-c)</br>
+[6.1 Create `calling-ffi/cpp/src/ffi.h`](#61-create-calling-fficppsrcffih-with-the-following-content)</br>
+[6.2 Create `calling-ffi/cpp/src/main.cpp`](#62-create-calling-fficppsrcmaincpp-with-the-following-content)</br>
+[6.3 Create `calling-ffi/cpp/CMakeLists.txt`](#63-create-calling-fficppcmakeliststxt-with-the-following-content)</br>
+[6.4 Build and run](#64-build-and-run)</br>
 
 [7. Let's call `Rust` function in `Node.JS`](#6-lets-call-rust-function-in-nodes)</br>
 
@@ -316,7 +320,7 @@ The `#[link_name]` helps link to the correct external function which can be gene
 
 </br>
 
-#### 3.3 How `Rust` transfers data type between `Rust` and `C/C++`?
+#### 3.3 How to transfers data type between `Rust` and `C/C++`?
 
 There are two modules to handle that:
 
@@ -829,25 +833,281 @@ than before.
 
 </br>
 
+</br>
+
 
 ## 5. Let's build a `Rust Dynamic library`
 
+</br>
+
+**Make sure `cd ffi-dynamic-lib/rust` before doing the following steps!!!**
+
+</br>
+
 #### 5.1 What will export via the `Rust Dynamic Library`:
 
-```rust
+There are several parts inside this library:
 
+###### 5.1.1 The `struct` definition:
+
+```rust
+///
+#[derive(Debug)]
+pub enum Gender {
+    Female,
+    Male,
+    Unknown,
+}
+
+///
+#[derive(Debug)]
+pub struct Location {
+    street_address: String,
+    city: String,
+    state: String,
+    country: String,
+}
+
+///
+pub struct Person {
+    first_name: String,
+    last_name: String,
+    gender: Gender,
+    age: u8,
+    location: Location,
+}
 ```
+
+</br>
+
+###### 5.1.2 The `extern` functions export to the outside world:
+
+Because `Rust` has the `ownership and borrowing` concept, all rust code
+under `borrow checker` control, actually should say under `borrow checker`'s 
+protection.
+
+But the `FFI` caller doesn't have that concept. If we pass the instance to
+the outside world, then the `borrow checker` can't guarantee and protect
+that instance memory.
+
+The easy way is that allocates the instance on the heap, and then return 
+its raw pointer.
+
+As we hand over the instance raw pointer to the `FFI` caller, that will lose
+control of the memory, that's why should have the `release` extern function
+to return the control of memory we given out to make sure release the instance
+memory correctly!!!
+
+</br>
+
+- Create new `Person` instance on the heap and return the raw pointer
+
+    ```rust
+    #[no_mangle]
+    pub extern "C" fn create_new_person(
+        first_name: *const c_char,
+        last_name: *const c_char,
+        gender: c_uchar,
+        age: c_uchar,
+        street_address: *const c_char,
+        city: *const c_char,
+        state: *const c_char,
+        country: *const c_char,
+    ) -> *mut Person {
+        let temp_gender = match gender {
+            0 => Gender::Female,
+            1 => Gender::Male,
+            _ => Gender::Unknown,
+        };
+    
+        unsafe {
+            let new_person = Person {
+                first_name: CStr::from_ptr(first_name).to_string_lossy().into_owned(),
+                last_name: CStr::from_ptr(last_name).to_string_lossy().into_owned(),
+                gender: temp_gender,
+                age: age as u8,
+                location: Location {
+                    street_address: CStr::from_ptr(street_address)
+                        .to_string_lossy()
+                        .into_owned(),
+                    city: CStr::from_ptr(city).to_string_lossy().into_owned(),
+                    state: CStr::from_ptr(state).to_string_lossy().into_owned(),
+                    country: CStr::from_ptr(country).to_string_lossy().into_owned(),
+                },
+            };
+    
+            Box::into_raw(Box::new(new_person))
+        }
+    }
+    ```
+    A couple of things happen here:
+
+    - `*const c_char`:
+
+        The `C-Style String` (`const char*`) needs to be converted into `String`, 
+        that why uses `*const std::os::raw::c_char` (immutable pointer to `c_char`).
+
+        </br>
+
+    - `#[no_mangle]`:
+
+        The `no_mangle` attribute instructs the `rustc` compiler to not alter the
+        function name when it is inserted to a binary file. This makes it easier
+        for FFI users to call it, as the name is kept as "human-readable".
+
+        When inspecting the dynamic library symbol table, you would see something
+        like this `_create_new_person` instead of this `_rust_eh_personality`.
+
+        </br>
+
+    - `extern "C"`:
+
+        `extern "C"` defines that this function should be callable outside Rust
+        codebases, and use the "C ABI" calling convention.
+
+        </br>
+            
+    - `Box::into_raw(Box::new(new_person))`:
+
+        `Box::new()` allocates the instance on the heap, then it can leave as long
+        as needed for the `FFI` caller to use.
+
+        `Box::into_raw()` consumes the `Box<Person>` and return the wrapped raw pointer.
+
+
+    </br>
+
+- Release the `Person` instance raw pointer correctly
+
+    ```rust
+    pub extern "C" fn release_person_pointer(ptr: *mut Person) {
+        if ptr.is_null() {
+            return;
+        }
+    
+        unsafe {
+            Box::from_raw(ptr);
+        }
+    }
+    ```
+
+    This extern function accepts a raw pointer which returned from 
+    `create_new_person()` and convert it back into `Box<Person>`,
+    then the box destructor will cleanup the `Person` instance correctly.
+
+    </br>
+
+- Release `CString` instance raw pointer correctly
+
+    ```rust
+    #[no_mangle]
+    pub extern "C" fn get_person_info(ptr: *mut Person) -> *mut c_char {
+        if ptr.is_null() {
+            return CString::new("").unwrap().into_raw();
+        }
+    
+        unsafe { CString::new((*ptr).get_info()).unwrap().into_raw() }
+    }
+
+    #[no_mangle]
+    pub extern "C" fn release_get_person_info(info_ptr: *mut c_char) {
+        if info_ptr.is_null() {
+            return;
+        }
+    
+        unsafe {
+            CString::from_raw(info_ptr);
+        }
+    }
+    ```
+
+    Because `Person.get_info()` returns a `String` instance, but the `FFI` 
+    caller can't use it, then we need to convert it into a `CString` instance
+    and call its `into_raw()` to produce a raw pointer which the `FFI` caller
+    can use it as a `char *` string. `CString.into_raw()` consumes the `CString`
+    and transfers ownership of the string to a `FFI(C)` caller.
+
+    In particular, that raw pointer SHOULD NOT be deallocated by using the
+    standard C `free()`. That's why we have the `release_get_person_info()`
+    for doing the release step.
+
+    </br>
+
+- The `Drop` trait:
+    
+    This can prove that `Person` instance (includes `Person.location`) has been destroyed correctly.
+
+    ```rust
+    ///
+    /// Customized drop trait
+    ///
+    impl Drop for Person {
+        ///
+        fn drop(&mut self) {
+            println!(
+                " [ Person instance get destroyed ] - first name: {}, last name: {}",
+                &self.first_name, &self.last_name
+            );
+        }
+    }
+    
+    ///
+    /// Customized drop trait
+    ///
+    impl Drop for Location {
+        ///
+        fn drop(&mut self) {
+            println!(
+                " [ Person location instance get destroyed ] - street address: {}, city: {}",
+                &self.street_address, &self.city
+            );
+        }
+    }
+    ```
+
+    </br>
+
+    Here is the [`ffi-dynamic-lib/rust/src/main.rs`](https://github.com/wisonye/rust-ffi-demo/blob/master/ffi-dynamic-lib/rust/src/main.rs).
+
+    </br>
+
+
+#### 5.2 Add the content below to `Cargo.toml`
+
+```toml
+[lib]
+crate-type = ["cdylib"]
+```
+
+The setting above indicates that a dynamic system library will be produced. This is 
+used when compiling a dynamic library to be loaded from another language. The output 
+file extension will be different for the particular OS:
+
+- Linux: `*.so`
+- MacOS: `*.dylib`
+- Windows: `*.dll`
+
+</br>
+
+
+#### 5.3 Build the library
+
+```bash
+cargo clean && cargo build --release
+```
+
+</br>
 
 #### 5.2 How to inspect the library's dynamic symbol table
 
 - Linux
 
     ```bash
-    objdump -T libdemo.so | grep "hello\|person\|Person\|Location"
+    objdump -T ./target/release/librust.so | grep "person\|Person\|Location"
 
 
     # Or
-    nm -f bsd libdemo.so | grep "hello\|person\|Person\|Location"
+    nm -f bsd ./target/release/librust.so | grep "person\|Person\|Location"
     ```
 
     </br>
@@ -855,12 +1115,189 @@ than before.
 - MacOS
 
     ```bash
-    objdump -t libdemo.dylib | grep "hello\|person\|Person\|Location"
+    objdump -t ./target/release/librust.dylib | grep "person\|Person\|Location"
+    # 0000000000001eb0 l     F __TEXT,__text  __ZN51_$LT$rust..Location$u20$as$u20$core..fmt..Debug$GT$3fmt17h33f040e226ce3834E
+    # 000000000002a4c0 l     F __TEXT,__text  __ZN4core5panic8Location6caller17hb3a7d4b2fc73787cE
+    # 000000000002a4d0 l     F __TEXT,__text  __ZN60_$LT$core..panic..Location$u20$as$u20$core..fmt..Display$GT$3fmt17h450055633af24029E
+    # 0000000000001280 g     F __TEXT,__text  _create_new_person
+    # 0000000000001c70 g     F __TEXT,__text  _get_person_info
+    # 0000000000001c00 g     F __TEXT,__text  _print_person_info
+    # 0000000000001e10 g     F __TEXT,__text  _release_get_person_info
+    # 0000000000001bb0 g     F __TEXT,__text  _release_person_pointer
+    # 0000000000022460 g     F __TEXT,__text  _rust_eh_personality
 
     # Or
-    nm -f bsd libdemo.dylib | grep "hello\|person\|Person\|Location"
+    nm -f bsd ./target/release/librust.dylib | grep "person\|Person\|Location"
+    # 000000000002a4c0 t __ZN4core5panic8Location6caller17hb3a7d4b2fc73787cE
+    # 0000000000001eb0 t __ZN51_$LT$rust..Location$u20$as$u20$core..fmt..Debug$GT$3fmt17h33f040e226ce3834E
+    # 000000000002a4d0 t __ZN60_$LT$core..panic..Location$u20$as$u20$core..fmt..Display$GT$3fmt17h450055633af24029E
+    # 0000000000001280 T _create_new_person
+    # 0000000000001c70 T _get_person_info
+    # 0000000000001c00 T _print_person_info
+    # 0000000000001e10 T _release_get_person_info
+    # 0000000000001bb0 T _release_person_pointer
+    # 0000000000022460 T _rust_eh_personality
 
     # Also, you can print the shared libraries used for linked Mach-O files:
+    objdump -macho -dylibs-used ./target/release/librust.dylib
+    # ./target/release/librust.dylib:
+    #         /Users/wison/Rust/rust-ffi-demo/ffi-dynamic-lib/rust/target/release/deps/librust.dylib (compatibility version 0.0.0, current version 0.0.0)
+    #         /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1252.250.1)
+    #         /usr/lib/libresolv.9.dylib (compatibility version 1.0.0, current version 1.0.0)
     ```
 
+
 </br>
+
+## 6. Let's call `Rust` function in `C++`
+
+</br>
+
+**Make sure `cd calling-ffi/cpp` before doing the following steps!!!**
+
+</br>
+
+#### 6.1 Create [`calling-ffi/cpp/src/ffi.h`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi/cpp/src/ffi.h) with the following content:
+
+```c++
+#pragma once
+
+//
+// Declare extern FFI functions from Rust dynamic library
+//
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct person person_t;
+
+person_t *create_new_person(const char *first_name,
+    const char *last_name,
+    unsigned char gender, unsigned char age,
+    const char *street_address,
+    const char *city, const char *state,
+    const char *country);
+
+void release_person_pointer(person_t *);
+
+void print_person_info(person_t *);
+
+char *get_person_info(person_t *);
+
+void release_get_person_info(char *);
+
+#ifdef __cplusplus
+}
+#endif
+```
+
+</br>
+
+#### 6.2 Create [`calling-ffi/cpp/src/main.cpp`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi/cpp/src/main.cpp) with the following content:
+
+```c++
+#include "ffi.h"
+#include <iostream>
+
+using namespace std;
+
+int main() {
+
+
+    //
+    // Call FFI functions
+    //
+
+    const char *first_name = "Wison";
+    const char *last_name = "Ye";
+    const char *street_address = "Wison's street_address here";
+    const char *city = "Wison's city here";
+    const char *state = "Wison's state here";
+    const char *country = "Wison's country here";
+    person_t *wison = create_new_person(
+        first_name,
+        last_name,
+        1,
+        88,
+        street_address,
+        city,
+        state,
+        country
+    );
+
+    print_person_info(wison);
+
+    char *person_info_ptr = get_person_info(wison);
+    cout << "\n>>> C++ caller print >>>\n" << person_info_ptr << "\n\n";
+    release_get_person_info(person_info_ptr);
+    
+    release_person_pointer(wison);
+    
+    return 0;
+}
+```
+</br>
+
+
+#### 6.3 Create [`calling-ffi/cpp/CMakeLists.txt`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi/cpp/CMakeLists.txt) with the following content:
+
+```bash
+cmake_minimum_required(VERSION "3.17.2")
+
+set(CMAKE_HOST_SYSTEM_PROCESSOR X86_64)
+
+set(CMAKE_C_COMPILER clang)
+set(CMAKE_CXX_COMPILER clang++ -stdlib=libc++)
+
+# Same with adding the compile flag `-std=c++17`
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED on)
+
+# Build type
+set(CMAKE_BUILD_TYPE Release)
+
+
+#-------------------------------------------------------------------------------------
+# Project settings
+#-------------------------------------------------------------------------------------
+
+# Define project name. After this, we can use "${PROJECT_NAME}" var to 
+# dereference/re-use the project name as a String value.
+project("calling-rust-in-cpp")
+
+# Add directories in which the linker will look for libraries.
+# This setting HAS TO define BEFORE `add_executable`!!!
+link_directories(../../ffi-dynamic-lib/rust/target/release)
+
+# Compile and build the executable
+add_executable("${PROJECT_NAME}" "src/main.cpp")
+
+# Link the particular library to the executable we build.
+# It asks the linker to use `-llibrust` option which means
+# link to the particular library file below for different OS:
+#
+# Linux   - librust.so
+# MacOS   - librust.dylib
+# Windows - librust.dll
+target_link_libraries("${PROJECT_NAME}" "rust")
+```
+
+</br>
+
+
+#### 6.4 Build and run
+
+```bash
+rm -rf build && mkdir build && cd build
+cmake ../ && make
+
+./calling-rust-in-cpp
+```
+
+You should see the output like below:
+
+![calling-ffi-cpp-demo.png](./images/calling-ffi-cpp-demo.png)
+
+</br>
+
+
