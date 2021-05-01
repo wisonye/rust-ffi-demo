@@ -24,6 +24,10 @@
 [5.2 How to inspect the library's dynamic symbol table](#52-how-to-inspect-the-librarys-dynamic-symbol-table)</br>
 
 [6. Let's call `Rust` function in `C++`](#6-lets-call-rust-function-in-c)</br>
+[6.1 Create `calling-ffi/cpp/src/ffi.h`](#61-create-calling-fficppsrcffih-with-the-following-content)</br>
+[6.2 Create `calling-ffi/cpp/src/main.cpp`](#62-create-calling-fficppsrcmaincpp-with-the-following-content)</br>
+[6.3 Create `calling-ffi/cpp/CMakeLists.txt`](#63-create-calling-fficppcmakeliststxt-with-the-following-content)</br>
+[6.4 Build and run](#64-build-and-run)</br>
 
 [7. Let's call `Rust` function in `Node.JS`](#6-lets-call-rust-function-in-nodes)</br>
 
