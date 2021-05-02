@@ -31,6 +31,8 @@
 
 [7. Let's call `Rust` function in `Node.JS`](#6-lets-call-rust-function-in-nodes)</br>
 
+[7.1 Setup node project and dependencies]()</br>
+
 ## 1. What is `ABI` and `FFI`
 
 - `ABI` which stands for `Application Binary Interface`.
@@ -1313,6 +1315,263 @@ cmake ../ && make
 You should see the output like below:
 
 ![calling-ffi-cpp-demo.png](./images/calling-ffi-cpp-demo.png)
+
+</br>
+
+
+## 7. Let's call `Rust` function in `Node.JS`
+
+</br>
+
+**Make sure `cd calling-ffi/node` before doing the following steps!!!**
+
+</br>
+
+#### 7.1 Setup node project and dependencies
+
+
+```bash
+npm init -y
+npm install ffi-napi
+mkdir src
+touch src/calling-rust-in-node.js
+```
+
+Add some npm scripts to `package.json` and it looks like below:
+
+```json
+{
+  "name": "calling-rust-in-node",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/calling-rust-in-node.js",
+    "print_ffi_types": "node src/print_ffi_types.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ffi-napi": "^4.0.3"
+  }
+}
+```
+
+</br>
+
+#### 7.2 Know more about the `ffi-napi` module
+
+###### 7.2.1 What is `ffi-napi`
+
+Node.js Foreign Function Interface for `N-API`.
+
+`ffi-napi` is a Node.js addon for loading and calling dynamic
+libraries using pure JavaScript. It can be used to create
+bindings to native libraries without writing any C++ code.
+
+</br>
+
+###### 7.2.2 What `C++` types supported by the `ffi-napi`
+
+Here is the [`src/print_ffi_types.js`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi-node/src/print_ffi_types.js)
+
+```js
+const ffi = require('ffi-napi');
+
+// console.log(`ffi: `, ffi)
+
+const ffiTypesKeys = Object.keys(ffi.types)
+
+console.log(`ffiTypes: `)
+
+ffiTypesKeys.forEach(key => {
+    const separator = key.length <= 8 ?`\t--> ` : `--> `
+
+    console.log(`key: `, key, separator, ffi.types[key].ffi_type)
+})
+```
+
+If you run `npm run print_ffi_types`, then you should be able to see
+the output like below:
+
+![print-ffi-types.png](./images/print-ffi-types.png)
+
+</br>
+
+###### 7.2.3 How to load dynamic library and call extern function
+
+Here is the [`src/calling-rust-in-node.js`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi-node/src/calling-rust-in-node.js).
+
+</br>
+
+```js
+const ffi = require('ffi-napi');
+
+// console.log(ffi.types);
+
+//
+// Load `librust` dynmaic library
+//
+const librust = ffi.Library(`../../ffi-dynamic-lib/rust/target/release/librust`, {
+
+    // 
+    // #[no_mangle]
+    // pub extern "C" fn create_new_person(
+    //     first_name: *const c_char,
+    //     last_name: *const c_char,
+    //     gender: c_uchar,
+    //     age: c_uchar,
+    //     street_address: *const c_char,
+    //     city: *const c_char,
+    //     state: *const c_char,
+    //     country: *const c_char,
+    //
+    'create_new_person': ['pointer', [
+        'string',
+        'string',
+        'uchar',
+        'uchar',
+        'string',
+        'string',
+        'string',
+        'string'
+    ]
+    ],
+
+    //
+    // #[no_mangle]
+    // pub extern "C" fn release_get_person_info(info_ptr: *mut c_char) {
+    //
+    'release_person_pointer': ['void', ['pointer']],
+
+    //
+    // #[no_mangle]
+    // pub extern "C" fn print_person_info(ptr: *mut Person) {
+    //
+    'print_person_info': ['void', ['pointer']],
+
+    //
+    // #[no_mangle]
+    // pub extern "C" fn get_person_info(ptr: *mut Person) -> *mut c_char {
+    //
+    'get_person_info': ['char *', ['pointer']],
+
+    //
+    // #[no_mangle]
+    // pub extern "C" fn release_get_person_info(info_ptr: *mut c_char) {
+    //
+    'release_get_person_info': ['void', ['char *']],
+})
+
+const newPersonPtr = librust.create_new_person(
+    `Wison`,
+    `Ye`,
+    1,
+    50,
+    `Wison's street_address here`,
+    `Wison's city here`,
+    `Wison's state here`,
+    `Wison's country here`,
+)
+
+try {
+    console.log(`>>> 'print_person_info' print >>>`)
+    librust.print_person_info(newPersonPtr)
+
+    const personInfoPtr = librust.get_person_info(newPersonPtr)
+    console.log(`\n>>> 'get_person_info' print >>>\n${personInfoPtr.readCString()}\n`)
+
+    librust.release_get_person_info(personInfoPtr)
+} finally {
+    librust.release_person_pointer(newPersonPtr)
+}
+```
+
+
+It looks pretty easy to understand, `ffi.Library` function accepts 2 two parameters:
+
+</br>
+
+- `../../ffi-dynamic-lib/rust/target/release/librust`:
+
+    This is the library filename to load, you don't need to add the extension, it will
+    figure out automatic:
+
+    ```js
+    /**
+     * The extension to use on libraries.
+     * i.e.  libm  ->  libm.so   on linux
+     */
+    
+    const EXT = Library.EXT = {
+      'linux':  '.so',
+      'linux2': '.so',
+      'sunos':  '.so',
+      'solaris':'.so',
+      'freebsd':'.so',
+      'openbsd':'.so',
+      'darwin': '.dylib',
+      'mac':    '.dylib',
+      'win32':  '.dll'
+    }[process.platform];
+    ```
+</br>
+
+- The second one JSON option is used to apply the extern function to
+the returned result object.
+
+    Here is the option syntax:
+
+    ```js
+    const librust = ffi.Library(`LIBRARY_FILENAME`, {
+        'EXTERN_FUNCTION_NAME': [ RETURN_TYPE, [PARAMETER_TYPE_LIST]]
+    })
+    ```
+
+    The `RETURN_TYPE` and `PARAMETER_TYPE` can any type print in the
+    `npm run print_ffi_types` output:
+
+
+    ```js
+    key:  void      -->  <Buffer@0x1046bbed8 name: 'void'>
+    key:  int8      -->  <Buffer@0x1046bbf08 name: 'int8'>
+    key:  uint8     -->  <Buffer@0x1046bbef0 name: 'uint8'>
+    key:  int16     -->  <Buffer@0x1046bbf38 name: 'int16'>
+    key:  uint16    -->  <Buffer@0x1046bbf20 name: 'uint16'>
+    key:  int32     -->  <Buffer@0x1046bbf68 name: 'int32'>
+    key:  uint32    -->  <Buffer@0x1046bbf50 name: 'uint32'>
+    key:  int64     -->  <Buffer@0x1046bbf98 name: 'int64'>
+    key:  uint64    -->  <Buffer@0x1046bbf80 name: 'uint64'>
+    key:  float     -->  <Buffer@0x1046bbfc8 name: 'float'>
+    key:  double    -->  <Buffer@0x1046bbfe0 name: 'double'>
+    key:  Object    -->  <Buffer@0x1046bbfb0 name: 'pointer'>
+    key:  CString   -->  <Buffer@0x1046bbfb0 name: 'pointer'>
+    key:  bool      -->  <Buffer@0x1046bbef0 name: 'uint8'>
+    key:  byte      -->  <Buffer@0x1046bbef0 name: 'uint8'>
+    key:  char      -->  <Buffer@0x1046bbf08 name: 'char'>
+    key:  uchar     -->  <Buffer@0x1046bbef0 name: 'uchar'>
+    key:  short     -->  <Buffer@0x1046bbf38 name: 'short'>
+    key:  ushort    -->  <Buffer@0x1046bbf20 name: 'ushort'>
+    key:  int       -->  <Buffer@0x1046bbf68 name: 'int'>
+    key:  uint      -->  <Buffer@0x1046bbf50 name: 'uint'>
+    key:  long      -->  <Buffer@0x1046bbf98 name: 'int64'>
+    key:  ulong     -->  <Buffer@0x1046bbf80 name: 'uint64'>
+    key:  longlong  -->  <Buffer@0x1046bbf98 name: 'longlong'>
+    key:  ulonglong -->  <Buffer@0x1046bbf80 name: 'ulonglong'>
+    key:  size_t    -->  <Buffer@0x1046bbfb0 name: 'pointer'>
+    ```
+
+    As you can see that they're all wrapped by the `Buffer` type,
+    that what happen under the hood.
+
+</br>
+
+#### 7.3 Build and run
+
+If you run `npm start`, then you should see the output like below:
+
+![calling-rust-in-node.png](./images/calling-rust-in-node.png)
 
 </br>
 

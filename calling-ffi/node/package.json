@@ -1,0 +1,16 @@
+{
+  "name": "calling-rust-in-node",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/calling-rust-in-node.js",
+    "print_ffi_types": "node src/print_ffi_types.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ffi-napi": "^4.0.3"
+  }
+}
