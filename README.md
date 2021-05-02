@@ -29,9 +29,13 @@
 [6.3 Create `calling-ffi/cpp/CMakeLists.txt`](#63-create-calling-fficppcmakeliststxt-with-the-following-content)</br>
 [6.4 Build and run](#64-build-and-run)</br>
 
-[7. Let's call `Rust` function in `Node.JS`](#6-lets-call-rust-function-in-nodes)</br>
-
-[7.1 Setup node project and dependencies]()</br>
+[7. Let's call `Rust` function in `Node.JS`](#7-lets-call-rust-function-in-nodejs)</br>
+[7.1 Setup node project and dependencies](#71-setup-node-project-and-dependencies)</br>
+[7.2 Know more about the `ffi-napi` module](#72-know-more-about-the-ffi-napi-module)</br>
+[7.2.1 What is `ffi-napi`](#721-what-is-ffi-napi)</br>
+[7.2.2 What `C++` types supported by the `ffi-napi`](#722-what-c-types-supported-by-the-ffi-napi)</br>
+[7.2.3 How to load dynamic library and call extern function](#723-how-to-load-dynamic-library-and-call-extern-function)</br>
+[7.3 Build and run](#73-build-and-run)</br>
 
 ## 1. What is `ABI` and `FFI`
 
@@ -1374,7 +1378,7 @@ bindings to native libraries without writing any C++ code.
 
 ###### 7.2.2 What `C++` types supported by the `ffi-napi`
 
-Here is the [`src/print_ffi_types.js`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi-node/src/print_ffi_types.js)
+Here is the [`src/print_ffi_types.js`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi/node/src/print_ffi_types.js)
 
 ```js
 const ffi = require('ffi-napi');
@@ -1401,7 +1405,7 @@ the output like below:
 
 ###### 7.2.3 How to load dynamic library and call extern function
 
-Here is the [`src/calling-rust-in-node.js`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi-node/src/calling-rust-in-node.js).
+Here is the [`src/calling-rust-in-node.js`](https://github.com/wisonye/rust-ffi-demo/blob/master/calling-ffi/node/src/calling-rust-in-node.js).
 
 </br>
 
@@ -1563,7 +1567,14 @@ the returned result object.
     ```
 
     As you can see that they're all wrapped by the `Buffer` type,
-    that what happen under the hood.
+    that what happens under the hood.
+
+    For more details about how to handle different cases in `ffi-napi`,
+    plz access the links below:
+
+    - [ String Arguments ](http://jakegoulding.com/rust-ffi-omnibus/string_arguments/)
+    - [ String Return Values ](http://jakegoulding.com/rust-ffi-omnibus/string_return/)
+    - [ Objects/Struct/Raw pointer](http://jakegoulding.com/rust-ffi-omnibus/objects/)
 
 </br>
 
