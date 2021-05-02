@@ -1533,11 +1533,11 @@ the returned result object.
     })
     ```
 
-    The `RETURN_TYPE` and `PARAMETER_TYPE` can any type print in the
+    The `RETURN_TYPE` and `PARAMETER_TYPE` can be any type print in the
     `npm run print_ffi_types` output:
 
 
-    ```js
+    ```bash
     key:  void      -->  <Buffer@0x1046bbed8 name: 'void'>
     key:  int8      -->  <Buffer@0x1046bbf08 name: 'int8'>
     key:  uint8     -->  <Buffer@0x1046bbef0 name: 'uint8'>
@@ -1567,7 +1567,7 @@ the returned result object.
     ```
 
     As you can see that they're all wrapped by the `Buffer` type,
-    that what happens under the hood.
+    that's what happens under the hood.
 
     For more details about how to handle different cases in `ffi-napi`,
     plz access the links below:
