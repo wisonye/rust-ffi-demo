@@ -20,7 +20,7 @@
 [4.2 Use `bindgen` automatic `FFI` bindings](#42-use-bindgen-automatic-ffi-bindings)</br>
 
 [5. Let's build a `Rust Dynamic library`](#5-lets-build-a-rust-dynamic-library)</br>
-[5.1 What will export via the `C++ Rust Library`](#51-what-will-export-via-the-rust-dynamic-library)</br>
+[5.1 What will export via the `Rust Dynamic Library`](#51-what-will-export-via-the-rust-dynamic-library)</br>
 [5.2 How to inspect the library's dynamic symbol table](#52-how-to-inspect-the-librarys-dynamic-symbol-table)</br>
 
 [6. Let's call `Rust` function in `C++`](#6-lets-call-rust-function-in-c)</br>
