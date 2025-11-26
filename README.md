@@ -434,7 +434,8 @@ There are two modules to handle that:
 
 ```bash
 # Install `bindgen`:
-cargo install bindgen
+cargo install bindgen-cli
+
 
 #
 # bindgen [FLAGS] [OPTIONS] <header> -- <clang-args>...
